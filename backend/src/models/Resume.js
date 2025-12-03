@@ -1,0 +1,82 @@
+import mongoose from 'mongoose';
+
+const { Schema } = mongoose;
+
+const experienceSchema = new Schema(
+  {
+    company: String,
+    role: String,
+    startDate: Date,
+    endDate: Date,
+    description: String
+  },
+  { _id: false }
+);
+
+const educationSchema = new Schema(
+  {
+    institution: String,
+    degree: String,
+    year: Number
+  },
+  { _id: false }
+);
+
+const parsedDataSchema = new Schema(
+  {
+    summary: String,
+    skills: {
+      type: [String],
+      default: []
+    },
+    experience: {
+      type: [experienceSchema],
+      default: []
+    },
+    education: {
+      type: [educationSchema],
+      default: []
+    },
+    embeddings: {
+      type: [Number],
+      default: []
+    }
+  },
+  { _id: false }
+);
+
+const resumeSchema = new Schema(
+  {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true
+    },
+    filePath: {
+      type: String,
+      required: true
+    },
+    originalFileName: String,
+    status: {
+      type: String,
+      enum: ['uploaded', 'processing', 'parsed', 'failed'],
+      default: 'uploaded'
+    },
+    parsedData: {
+      type: parsedDataSchema,
+      default: () => ({})
+    }
+  },
+  {
+    timestamps: true,
+    collection: 'resumes'
+  }
+);
+
+resumeSchema.index({ userId: 1, createdAt: -1 });
+
+const Resume = mongoose.models.Resume || mongoose.model('Resume', resumeSchema);
+
+export default Resume;
+
