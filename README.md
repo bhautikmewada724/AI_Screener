@@ -43,6 +43,7 @@ Data always flows `Frontend → Backend → FastAPI → MongoDB` when AI assista
   - `.env` → `PORT`.
 - `docs/`
   - `roadmap.md` → phase tracking (Phase 0 currently IN PROGRESS).
+  - `data-model.md` → MongoDB schemas and relationships.
 
 ## Project Rules & Conventions
 
@@ -52,6 +53,18 @@ Data always flows `Frontend → Backend → FastAPI → MongoDB` when AI assista
 - JWT must be stored in frontend `localStorage`.
 - Node backend uses ES modules exclusively.
 - Swagger/OpenAPI docs stay in sync with backend endpoints.
+
+## Core Data Models
+
+| Collection | Purpose | Key Relationships |
+| --- | --- | --- |
+| `users` | Auth & RBAC identities | Roles: admin, hr, candidate |
+| `resumes` | Candidate uploads + AI parsed data (`parsedData`) | `userId → users._id` |
+| `job_descriptions` | HR-authored job postings + AI metadata | `hrId → users._id` |
+| `match_results` | Resume ↔ job match scores + matched skills | `resumeId → resumes._id`, `jobId → job_descriptions._id` |
+| `recommendations` | Ranked job suggestions per candidate | `candidateId → users._id`, each entry links to `job_descriptions` |
+
+See `docs/data-model.md` for field-level detail, indexes, and sanity test instructions.
 
 ## Configuration Strategy
 
