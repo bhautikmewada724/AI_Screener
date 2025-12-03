@@ -35,6 +35,7 @@ Data always flows `Frontend → Backend → FastAPI → MongoDB` when AI assista
 - `backend/`
   - `src/` → Express server, routes, controllers, services, data models.
   - `config/` → environment loaders (uses ES modules).
+  - `uploads/resumes/` → local storage for candidate resumes in development.
   - `swagger/` → OpenAPI definitions kept current with endpoints.
   - `.env` → `MONGO_URI`, `JWT_SECRET`, `AI_SERVICE_URL`, `PORT`.
 - `ai-service/`

@@ -12,7 +12,7 @@ This document summarizes the MongoDB collections that now back the AI Screener p
 - Model: `Resume`
 - Key fields:
   - `userId` → `User` reference (candidate owner, required, indexed).
-  - `filePath` and `originalFileName` → uploaded asset metadata.
+  - `filePath` and `originalFileName` → uploaded asset metadata (stored under `backend/uploads/resumes/` during development).
   - `status` → `uploaded | processing | parsed | failed`.
   - `parsedData` → AI output (`summary`, `skills`, `experience`, `education`, `embeddings`).
 - Timestamps enabled. Index on `{ userId: 1, createdAt: -1 }`.
