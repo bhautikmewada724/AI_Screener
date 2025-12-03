@@ -12,8 +12,21 @@ const baseDefinition = {
     {
       name: 'Health',
       description: 'Service uptime probes'
+    },
+    {
+      name: 'Auth',
+      description: 'Authentication and authorization endpoints'
     }
-  ]
+  ],
+  components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT'
+      }
+    }
+  }
 };
 
 const swaggerOptions = {
