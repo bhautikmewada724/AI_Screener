@@ -16,7 +16,10 @@ class EducationItem(BaseModel):
 
 
 class ResumeParseRequest(BaseModel):
-  resume_text: str = Field(..., description='Plain text extracted from candidate resume')
+  file_path: str = Field(..., description='Backend-accessible file path for the uploaded resume')
+  file_name: str = Field(..., description='Original file name')
+  user_id: str = Field(..., description='Candidate identifier')
+  resume_text: Optional[str] = Field(None, description='Optional raw text fallback')
   candidate_name: Optional[str] = Field(None, description='Optional candidate name metadata')
 
 
