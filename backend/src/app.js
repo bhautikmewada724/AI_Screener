@@ -9,6 +9,7 @@ import errorHandler from './middlewares/errorHandler.js';
 import healthRouter from './routes/healthRoutes.js';
 import authRouter from './routes/authRoutes.js';
 import aiRouter from './routes/aiRoutes.js';
+import resumeRouter from './routes/resumeRoutes.js';
 import buildSwaggerSpec from './swagger.js';
 
 dotenv.config();
@@ -25,6 +26,7 @@ app.use(morgan('dev'));
 app.use('/', healthRouter);
 app.use('/auth', authRouter);
 app.use('/ai', aiRouter);
+app.use('/resume', resumeRouter);
 
 // Swagger docs
 const serverUrl = process.env.API_BASE_URL || `http://localhost:${PORT}`;

@@ -1,0 +1,90 @@
+import { Router } from 'express';
+
+import { authenticate, authorizeRoles } from '../middlewares/authMiddleware.js';
+import { uploadResume, getResumeById, getMyResumes } from '../controllers/resumeController.js';
+import { resumeUpload } from '../config/multer.js';
+
+const router = Router();
+
+/**
+ * @openapi
+ * /resume/upload:
+ *   post:
+ *     tags:
+ *       - Resume
+ *     summary: Upload a resume and trigger AI parsing.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: PDF, DOC, or DOCX file.
+ *     responses:
+ *       201:
+ *         description: Resume uploaded successfully.
+ *       400:
+ *         description: Invalid input.
+ *       401:
+ *         description: Unauthorized.
+ */
+router.post(
+  '/upload',
+  authenticate,
+  authorizeRoles('candidate'),
+  resumeUpload.single('file'),
+  uploadResume
+);
+
+/**
+ * @openapi
+ * /resume/me:
+ *   get:
+ *     tags:
+ *       - Resume
+ *     summary: List resumes belonging to the authenticated candidate.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of resumes.
+ *       401:
+ *         description: Unauthorized.
+ */
+router.get('/me', authenticate, authorizeRoles('candidate'), getMyResumes);
+
+/**
+ * @openapi
+ * /resume/{id}:
+ *   get:
+ *     tags:
+ *       - Resume
+ *     summary: Fetch a parsed resume by ID.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Resume document.
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden.
+ *       404:
+ *         description: Not found.
+ */
+router.get('/:id', authenticate, getResumeById);
+
+export default router;
+
