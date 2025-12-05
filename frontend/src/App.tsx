@@ -9,6 +9,8 @@ import JobDetailPage from './pages/JobDetailPage';
 import AdminOverviewPage from './pages/AdminOverviewPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import AdminUserDetailPage from './pages/AdminUserDetailPage';
+import AdminJobsPage from './pages/AdminJobsPage';
+import AdminJobFormPage from './pages/AdminJobFormPage';
 import { useAuth } from './hooks/useAuth';
 
 interface ProtectedRouteProps {
@@ -62,6 +64,9 @@ const App = () => {
         <Route path="/admin/overview" element={<AdminOverviewPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
         <Route path="/admin/users/:userId" element={<AdminUserDetailPage />} />
+        <Route path="/admin/jobs" element={<AdminJobsPage />} />
+        <Route path="/admin/jobs/new" element={<AdminJobFormPage />} />
+        <Route path="/admin/jobs/:jobId/edit" element={<AdminJobFormPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/hr/dashboard" replace />} />
     </Routes>

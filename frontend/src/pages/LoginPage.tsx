@@ -47,7 +47,7 @@ const LoginPage = () => {
       >
         <div>
           <h2 style={{ margin: 0 }}>AI Screener</h2>
-          <p style={{ marginBottom: 0, color: '#475569' }}>HR Workflows Login</p>
+          <p style={{ marginBottom: 0, color: '#475569' }}>Admin &amp; HR Console Login</p>
         </div>
 
         <label style={{ display: 'grid', gap: '0.25rem' }}>
@@ -86,7 +86,8 @@ const LoginPage = () => {
           {loading ? 'Signing in...' : 'Sign in'}
         </button>
         <small style={{ color: '#64748b' }}>
-          HR access only. Use credentials provisioned via `/auth/register`.
+          Use admin or HR credentials provisioned via `/auth/register`. candidates should continue using the
+          mobile/desktop experience designed for them.
         </small>
       </form>
     </div>

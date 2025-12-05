@@ -8,7 +8,7 @@
     "dev": "nodemon src/app.js",
     "start": "nodemon src/app.js",
     "model:sanity": "node ./scripts/modelSanityCheck.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test src/services/__tests__/*.test.js"
   },
   "keywords": [
     "express",

@@ -26,7 +26,10 @@ const matchResultSchema = new Schema(
       type: [String],
       default: []
     },
-    explanation: String,
+    explanation: {
+      type: Schema.Types.Mixed,
+      default: () => ({})
+    },
     metadata: {
       type: Map,
       of: String

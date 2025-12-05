@@ -13,7 +13,6 @@ const baseDefinition = {
       name: 'Health',
       description: 'Service uptime probes'
     },
-    
     {
       name: 'Auth',
       description: 'Authentication and authorization endpoints'
@@ -37,8 +36,11 @@ const baseDefinition = {
     {
       name: 'HR Workflows',
       description: 'Review queues, comments, and audit trail for HR teams'
+    },
+    {
+      name: 'AI Matching',
+      description: 'Explainable candidate-job scoring and ranking APIs'
     }
-  
   ],
   components: {
     securitySchemes: {

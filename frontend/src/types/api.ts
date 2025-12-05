@@ -29,6 +29,7 @@ export interface JobDescription {
   openings?: number;
   tags?: string[];
   reviewStages?: string[];
+  hrId?: string;
   createdAt: string;
 }
 

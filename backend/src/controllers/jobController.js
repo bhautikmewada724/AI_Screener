@@ -138,6 +138,10 @@ export const updateJob = async (req, res, next) => {
       }
     });
 
+    if (req.user.role === 'admin' && typeof req.body.hrId !== 'undefined') {
+      job.hrId = req.body.hrId;
+    }
+
     await job.save();
     return res.json(job);
   } catch (error) {

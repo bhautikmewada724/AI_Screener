@@ -122,3 +122,12 @@ The Admin Console adds platform oversight tools:
   - Swagger tag “Admin” enumerates all admin APIs.
   - Roadmap marks Phase 7 as in progress.
 
+## Phase 8 – AI Matching Logic (in progress)
+
+- **Matching service**: `backend/src/services/matchingService.js` computes deterministic scores from skills, experience, location, and tags with configurable weights plus structured explanations.
+- **Endpoints**: `/matching/jobs/{jobId}` returns ranked candidates with explanations; `/matching/simulate` lets admins test specific pairs.
+- **Frontend**: HR job detail page now includes an “AI Ranked Candidates” card highlighting top matches and explanation details.
+- **Tests**: Node test suite covers scoring helpers; `npm run test` executes them.
+- **Configuration**: adjust feature weights via env vars `MATCH_WEIGHT_SKILLS`, `MATCH_WEIGHT_EXPERIENCE`, `MATCH_WEIGHT_LOCATION`, and `MATCH_WEIGHT_TAGS`.
+#*** End Patch
+

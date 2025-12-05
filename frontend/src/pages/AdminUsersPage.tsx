@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 
 import { listUsers, updateUserRole, updateUserStatus } from '../api/admin';
+import { updateJobOwner } from '../api/jobs';
 import { useAuth } from '../hooks/useAuth';
 
 const roles = ['admin', 'hr', 'candidate'];
