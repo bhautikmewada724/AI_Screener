@@ -10,7 +10,6 @@ const auditEventSchema = new Schema(
     applicationId: {
       type: Schema.Types.ObjectId,
       ref: 'Application',
-      required: true,
       index: true
     },
     actorId: {
@@ -33,6 +32,8 @@ const auditEventSchema = new Schema(
     collection: 'audit_events'
   }
 );
+
+auditEventSchema.index({ actorId: 1, createdAt: -1 });
 
 const AuditEvent =
   mongoose.models.AuditEvent || mongoose.model('AuditEvent', auditEventSchema);

@@ -16,8 +16,12 @@ const LoginPage = () => {
     setError(null);
     setLoading(true);
     try {
-      await login(email, password);
-      navigate('/hr/dashboard');
+      const loggedInUser = await login(email, password);
+      if (loggedInUser.role === 'admin') {
+        navigate('/admin/overview');
+      } else {
+        navigate('/hr/dashboard');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

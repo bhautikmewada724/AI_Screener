@@ -90,4 +90,38 @@ a {
   color: #5b21b6;
 }
 
+.status-badge.active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-badge.inactive {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.status-badge.banned {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.admin-nav-link {
+  display: block;
+  padding: 0.65rem 1rem;
+  border-radius: 0.75rem;
+  color: #e2e8f0;
+  text-decoration: none;
+  font-weight: 600;
+  transition: background 0.15s ease;
+}
+
+.admin-nav-link:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.admin-nav-link.active {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
 

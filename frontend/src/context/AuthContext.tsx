@@ -9,8 +9,9 @@ interface AuthState {
   token?: string;
   isAuthenticated: boolean;
   isBootstrapping: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<UserProfile>;
   logout: () => void;
+  refreshCurrentUser: () => Promise<void>;
 }
 
 const STORAGE_KEY = 'ai-screener-auth';
@@ -18,8 +19,16 @@ const STORAGE_KEY = 'ai-screener-auth';
 export const AuthContext = createContext<AuthState>({
   isAuthenticated: false,
   isBootstrapping: true,
-  async login() {},
-  logout() {}
+  async login() {
+    return {
+      id: '',
+      name: '',
+      email: '',
+      role: 'candidate'
+    };
+  },
+  logout() {},
+  async refreshCurrentUser() {}
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -59,6 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setToken(response.token);
       setUser(response.user);
       persist({ token: response.token, user: response.user });
+      return response.user;
     },
     [persist]
   );
@@ -69,16 +79,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     persist(undefined);
   }, [persist]);
 
+  const refreshCurrentUser = useCallback(async () => {
+    if (!token) return;
+    try {
+      const response = await apiRequest<{ user: UserProfile }>('/auth/me', { token });
+      setUser(response.user);
+      persist({ token, user: response.user });
+    } catch {
+      logout();
+    }
+  }, [logout, persist, token]);
+
   const value = useMemo(
     () => ({
       user,
       token,
       login,
       logout,
+      refreshCurrentUser,
       isAuthenticated: Boolean(user && token),
       isBootstrapping
     }),
-    [isBootstrapping, login, logout, token, user]
+    [isBootstrapping, login, logout, refreshCurrentUser, token, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

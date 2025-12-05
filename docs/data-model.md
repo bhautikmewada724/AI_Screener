@@ -7,6 +7,8 @@ This document summarizes the MongoDB collections that now back the AI Screener p
 ### `users`
 - Already defined in Phase 2.
 - Roles: `admin`, `hr`, `candidate`.
+- Status field: `active | inactive | banned` (defaults to `active`) enables admin account controls.
+- Tracks `lastLoginAt` for admin auditing.
 
 ### `resumes`
 - Model: `Resume`

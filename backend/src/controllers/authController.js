@@ -87,6 +87,8 @@ export const login = async (req, res, next) => {
     }
 
     const token = signToken(user);
+    user.lastLoginAt = new Date();
+    await user.save({ validateBeforeSave: false });
 
     return res.json({
       user: sanitizeUser(user),

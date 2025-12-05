@@ -5,6 +5,10 @@ export interface UserProfile {
   name: string;
   email: string;
   role: UserRole;
+  status?: 'active' | 'inactive' | 'banned';
+  createdAt?: string;
+  updatedAt?: string;
+  lastLoginAt?: string;
 }
 
 export interface SalaryRange {

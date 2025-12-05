@@ -22,11 +22,23 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: ALLOWED_ROLES,
-      default: ROLES.CANDIDATE
+      default: ROLES.CANDIDATE,
+      index: true
+    },
+    status: {
+      type: String,
+      enum: ['active', 'inactive', 'banned'],
+      default: 'active',
+      index: true
+    },
+    lastLoginAt: {
+      type: Date
     }
   },
   { timestamps: true }
 );
+
+userSchema.index({ email: 1 });
 
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 

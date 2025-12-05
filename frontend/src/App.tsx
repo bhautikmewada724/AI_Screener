@@ -2,9 +2,13 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import type { ReactNode } from 'react';
 
 import HrLayout from './layouts/HrLayout';
+import AdminLayout from './layouts/AdminLayout';
 import LoginPage from './pages/LoginPage';
 import HrDashboardPage from './pages/HrDashboardPage';
 import JobDetailPage from './pages/JobDetailPage';
+import AdminOverviewPage from './pages/AdminOverviewPage';
+import AdminUsersPage from './pages/AdminUsersPage';
+import AdminUserDetailPage from './pages/AdminUserDetailPage';
 import { useAuth } from './hooks/useAuth';
 
 interface ProtectedRouteProps {
@@ -47,6 +51,17 @@ const App = () => {
       >
         <Route path="/hr/dashboard" element={<HrDashboardPage />} />
         <Route path="/hr/jobs/:jobId" element={<JobDetailPage />} />
+      </Route>
+      <Route
+        element={
+          <ProtectedRoute roles={['admin']}>
+            <AdminLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/admin/overview" element={<AdminOverviewPage />} />
+        <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/admin/users/:userId" element={<AdminUserDetailPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/hr/dashboard" replace />} />
     </Routes>

@@ -105,3 +105,20 @@ npm run dev
 
 Visit `http://localhost:5173` and sign in with an HR- or admin-role account created via `/auth/register`. The frontend stores the JWT in `localStorage` and routes requests through the backend gateway only.
 
+## Phase 7 – Admin Console
+
+The Admin Console adds platform oversight tools:
+
+- **Backend**
+  - New `/admin` endpoints for listing users, viewing user detail, updating roles/status (with safeguards against removing the last admin), and fetching system metrics.
+  - `adminService` reuses RBAC middleware and logs sensitive actions in `AuditEvent`.
+  - `User` schema now includes `status` (`active|inactive|banned`) and `lastLoginAt`.
+- **Frontend**
+  - Admin-only layout with sidebar navigation.
+  - System Overview page showing key stats (users/jobs/applications).
+  - User Management list with filters, role/status controls, and per-user detail view.
+  - Role-based routing automatically sends admins to `/admin/overview` after login.
+- **Docs**
+  - Swagger tag “Admin” enumerates all admin APIs.
+  - Roadmap marks Phase 7 as in progress.
+
