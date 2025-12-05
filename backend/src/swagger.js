@@ -16,6 +16,22 @@ const baseDefinition = {
     {
       name: 'Auth',
       description: 'Authentication and authorization endpoints'
+    },
+    {
+      name: 'Resume',
+      description: 'Candidate resume management APIs'
+    },
+    {
+      name: 'HR Jobs',
+      description: 'Job description CRUD and matching for HR users'
+    },
+    {
+      name: 'Applications',
+      description: 'Candidate-side application submission and tracking'
+    },
+    {
+      name: 'HR Workflows',
+      description: 'Review queues, comments, and audit trail for HR teams'
     }
   ],
   components: {

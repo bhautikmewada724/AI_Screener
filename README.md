@@ -21,7 +21,7 @@ Data always flows `Frontend → Backend → FastAPI → MongoDB` when AI assista
 
 | Layer | Technologies |
 | --- | --- |
-| Frontend | React, TypeScript, Vite (planned), JWT in `localStorage` |
+| Frontend | React, TypeScript, Vite, React Query, JWT in `localStorage` |
 | Backend | Node.js (ES modules), Express.js, Swagger/OpenAPI, MongoDB driver |
 | AI Service | Python, FastAPI, NLP/LLM tooling (to be defined), Pydantic |
 | Database & Infra | MongoDB Atlas (planned), containerized deployment |
@@ -31,7 +31,7 @@ Data always flows `Frontend → Backend → FastAPI → MongoDB` when AI assista
 - `frontend/`
   - `src/` → React components, routing, state, hooks.
   - `public/` → static assets.
-  - `.env` → `REACT_APP_API_BASE_URL`.
+  - `.env` → `VITE_API_BASE_URL` (defaults to `http://localhost:5000`).
 - `backend/`
   - `src/` → Express server, routes, controllers, services, data models.
   - `config/` → environment loaders (uses ES modules).
@@ -54,6 +54,8 @@ Data always flows `Frontend → Backend → FastAPI → MongoDB` when AI assista
 - JWT must be stored in frontend `localStorage`.
 - Node backend uses ES modules exclusively.
 - Swagger/OpenAPI docs stay in sync with backend endpoints.
+- HR-only endpoints live under `/hr/**` and always use `authenticate` + `authorizeRoles('hr','admin')`.
+- Candidate application submission routes live under `/applications` and are limited to `candidate` role.
 
 ## Core Data Models
 
@@ -64,10 +66,42 @@ Data always flows `Frontend → Backend → FastAPI → MongoDB` when AI assista
 | `job_descriptions` | HR-authored job postings + AI metadata | `hrId → users._id` |
 | `match_results` | Resume ↔ job match scores + matched skills | `resumeId → resumes._id`, `jobId → job_descriptions._id` |
 | `recommendations` | Ranked job suggestions per candidate | `candidateId → users._id`, each entry links to `job_descriptions` |
+| `applications` | Candidate ↔ job workflow records | `candidateId → users._id`, `jobId → job_descriptions._id`, `resumeId → resumes._id` |
+| `review_notes` | HR collaboration comments | `applicationId → applications._id`, `authorId → users._id` |
+| `audit_events` | Immutable workflow actions | `applicationId → applications._id`, `actorId → users._id` |
+
+HR workflows leverage these collections for CRUD operations and cached candidate matching per job.
 
 See `docs/data-model.md` for field-level detail, indexes, and sanity test instructions.
 
 ## Configuration Strategy
 
 Each service maintains its own `.env` file (ignored by git) for clarity and least privilege. Shared secrets (e.g., `JWT_SECRET`) reside only where needed, and inter-service URLs (e.g., `AI_SERVICE_URL`) point to private network addresses or service discovery entries.
+
+## Phase 6 – HR Workflows
+
+Phase 6 introduces the HR tools defined in `docs/roadmap.md`:
+
+- **Backend**
+  - New `Application`, `ReviewNote`, and `AuditEvent` models plus workflow metadata added to `JobDescription`.
+  - Candidate application submission endpoints (`POST /applications`, `GET /applications/me`).
+  - `/hr` workflow routes for review queues, status transitions (shortlist, reject, hire), match-score refresh, threaded comments, and audit trails.
+  - Shared `hrWorkflowService` module centralizes ownership checks, AI scoring, and audit logging.
+- **Frontend**
+  - Vite + React dashboard under `frontend/` with login → HR dashboard → job-specific workflow views.
+  - Candidate list with match scores, resume viewer, shortlist manager, comment system, and audit timeline.
+  - React Query keeps UI responsive and caches queue data per job.
+- **Documentation**
+  - `docs/data-model.md` & `docs/roadmap.md` refreshed with workflow scope, and this README now documents the HR flows.
+
+## Frontend Setup
+
+```bash
+cd frontend
+npm install
+echo "VITE_API_BASE_URL=http://localhost:5000" > .env
+npm run dev
+```
+
+Visit `http://localhost:5173` and sign in with an HR- or admin-role account created via `/auth/register`. The frontend stores the JWT in `localStorage` and routes requests through the backend gateway only.
 

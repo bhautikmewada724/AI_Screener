@@ -8,7 +8,7 @@
 | 3 | Frontend Shell | PLANNED | React app initialization, routing scaffold. |
 | 4 | Auth & Security | PLANNED | JWT flows, RBAC enforcement, secure storage. |
 | 5 | Candidate Experience | PLANNED | Candidate dashboards and application flow. |
-| 6 | HR Workflows | PLANNED | Role-specific tools for HR teams. |
+| 6 | HR Workflows | IN PROGRESS | HR dashboards, workflow APIs, comments, and audit trails for recruiters. |
 | 7 | Admin Console | PLANNED | System oversight, user management. |
 | 8 | AI Matching Logic | PLANNED | NLP pipelines, scoring, explainability. |
 | 9 | Notifications & Messaging | PLANNED | Email/web push, in-app updates. |

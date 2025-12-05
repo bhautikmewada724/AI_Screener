@@ -23,6 +23,7 @@ This document summarizes the MongoDB collections that now back the AI Screener p
   - `hrId` → `User` reference (HR owner, required, indexed).
   - `title`, `description`, `location`, `employmentType`, `salaryRange`.
   - `requiredSkills` array + optional `embeddings`.
+  - Workflow metadata: `status` (`draft|open|on_hold|closed|archived`), `openings`, `tags`, and `reviewStages`.
 - Timestamps enabled. Index on `{ title: 1 }`.
 
 ### `match_results`
@@ -46,6 +47,26 @@ This document summarizes the MongoDB collections that now back the AI Screener p
 - `User (hr)` → `JobDescription` (one-to-many).
 - `Resume` ↔ `JobDescription` via `MatchResult` (many-to-many).
 - `Recommendation` stores the latest ranked list of `JobDescription` documents for each candidate.
+
+### `applications`
+- Model: `Application`
+- Represents a candidate + resume paired to a job posting and tracks workflow status.
+- Fields: `jobId`, `candidateId`, `resumeId`, optional `matchResultId`, `status`, `reviewStage`, `assignedTo`, `matchScore`, `matchedSkills`, `decisionReason`, `notesCount`, `metadata`.
+- Indexes:
+  - `{ jobId: 1, candidateId: 1 }` unique (prevents duplicate applications).
+  - Single-field indexes on `jobId`, `candidateId`, `status` for queue filtering.
+
+### `review_notes`
+- Model: `ReviewNote`
+- Stores threaded HR comments on an application.
+- Fields: `applicationId`, `authorId`, `body`, `visibility ('shared' | 'private')`.
+- Indexed by `applicationId` for quick retrieval inside the workflow UI.
+
+### `audit_events`
+- Model: `AuditEvent`
+- Immutable append-only record of workflow actions (status changes, comments, score refresh, submissions).
+- Fields: `applicationId`, `actorId`, `action`, `context` (arbitrary key/value map).
+- Indexed by `applicationId`; includes timestamps for chronological timelines.
 
 ## Sanity Script
 

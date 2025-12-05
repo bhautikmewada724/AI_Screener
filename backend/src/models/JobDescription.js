@@ -41,6 +41,25 @@ const jobDescriptionSchema = new Schema(
       type: [Number],
       default: []
     },
+    status: {
+      type: String,
+      enum: ['draft', 'open', 'on_hold', 'closed', 'archived'],
+      default: 'open',
+      index: true
+    },
+    openings: {
+      type: Number,
+      default: 1,
+      min: 0
+    },
+    tags: {
+      type: [String],
+      default: []
+    },
+    reviewStages: {
+      type: [String],
+      default: () => ['screen', 'interview', 'offer']
+    },
     metadata: {
       type: Map,
       of: String
