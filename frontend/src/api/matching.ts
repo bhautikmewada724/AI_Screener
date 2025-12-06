@@ -11,6 +11,8 @@ export const fetchJobMatches = (jobId: string, token?: string, options?: { minSc
     candidateId: string;
     matchScore: number;
     matchedSkills: string[];
+    missingSkills?: string[];
+    embeddingSimilarity?: number;
     explanation: Record<string, unknown>;
     resumeSummary?: string;
     resumeSkills?: string[];

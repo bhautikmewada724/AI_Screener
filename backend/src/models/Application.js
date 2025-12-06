@@ -53,7 +53,10 @@ const applicationSchema = new Schema(
       type: [String],
       default: []
     },
-    matchExplanation: String,
+    matchExplanation: {
+      type: Schema.Types.Mixed,
+      default: null
+    },
     decisionReason: String,
     notesCount: {
       type: Number,

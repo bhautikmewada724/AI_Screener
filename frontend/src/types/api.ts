@@ -50,6 +50,7 @@ export interface ResumePayload {
     skills?: string[];
     experience?: ResumeExperience[];
     education?: Array<{ institution?: string; degree?: string; year?: number }>;
+    warnings?: string[];
   };
 }
 
@@ -69,7 +70,9 @@ export interface ApplicationRecord {
   reviewStage?: string;
   matchScore: number;
   matchedSkills: string[];
-  matchExplanation?: string;
+  matchExplanation?: string | Record<string, unknown>;
+  missingSkills?: string[];
+  embeddingSimilarity?: number;
   decisionReason?: string;
   notesCount: number;
   createdAt: string;

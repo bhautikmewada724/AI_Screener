@@ -26,6 +26,16 @@ const matchResultSchema = new Schema(
       type: [String],
       default: []
     },
+    missingSkills: {
+      type: [String],
+      default: []
+    },
+    embeddingSimilarity: {
+      type: Number,
+      min: 0,
+      max: 1,
+      default: 0
+    },
     explanation: {
       type: Schema.Types.Mixed,
       default: () => ({})

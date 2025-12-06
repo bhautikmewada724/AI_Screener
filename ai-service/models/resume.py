@@ -7,6 +7,8 @@ class ExperienceItem(BaseModel):
   company: str = Field(..., description='Company or organization name')
   role: str = Field(..., description='Role or title held')
   duration: Optional[str] = Field(None, description='Human readable duration, e.g. Jan 2020 - Mar 2022')
+  startDate: Optional[str] = Field(None, description='ISO8601 start date if parsed')
+  endDate: Optional[str] = Field(None, description='ISO8601 end date if parsed')
 
 
 class EducationItem(BaseModel):
@@ -28,5 +30,7 @@ class ResumeParseResponse(BaseModel):
   skills: List[str]
   experience: List[ExperienceItem]
   education: List[EducationItem]
-  embeddings: List[float] = Field(default_factory=list, description='Mocked embedding vector for downstream tasks')
+  location: Optional[str] = Field(None, description='Detected location or remote status')
+  embeddings: List[float] = Field(default_factory=list, description='Embedding vector for downstream tasks')
+  warnings: List[str] = Field(default_factory=list, description='Non-fatal issues encountered during parsing')
 

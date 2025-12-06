@@ -1,6 +1,11 @@
-import { Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../hooks/useAuth';
+
+const navItems = [
+  { to: '/hr/dashboard', label: 'Dashboard' },
+  { to: '/hr/jobs/overview', label: 'Job Workflows', disabled: true }
+];
 
 const HrLayout = () => {
   const { user, logout } = useAuth();
@@ -12,32 +17,34 @@ const HrLayout = () => {
   };
 
   return (
-    <div>
-      <header
-        style={{
-          background: '#0f172a',
-          color: '#fff',
-          padding: '1rem 2rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}
-      >
-        <div>
-          <strong>AI Screener</strong> · HR Workflows
+    <div className="sidebar-shell">
+      <aside className="sidebar-panel">
+        <div className="space-y-1">
+          <p className="text-xs uppercase tracking-wide text-white/60">AI Screener</p>
+          <h2 className="text-2xl font-semibold">HR Workspace</h2>
+          <small className="text-white/70">Signed in as {user?.name}</small>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div>
-            <div style={{ fontWeight: 600 }}>{user?.name}</div>
-            <small style={{ opacity: 0.85, textTransform: 'uppercase' }}>{user?.role}</small>
-          </div>
-          <button className="btn" style={{ background: '#f8fafc', color: '#0f172a' }} onClick={handleLogout}>
-            Logout
-          </button>
+        <nav className="flex flex-col gap-1">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `sidebar-nav-link ${isActive ? 'active' : ''} ${item.disabled ? 'opacity-50 pointer-events-none' : ''}`
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+        <button className="btn btn-secondary mt-auto justify-center" onClick={handleLogout}>
+          Logout
+        </button>
+      </aside>
+      <main className="bg-brand-surface p-6 lg:p-10">
+        <div className="page-shell">
+          <Outlet />
         </div>
-      </header>
-      <main style={{ padding: '2rem', minHeight: 'calc(100vh - 64px)' }}>
-        <Outlet />
       </main>
     </div>
   );

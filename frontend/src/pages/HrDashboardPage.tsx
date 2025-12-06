@@ -5,6 +5,11 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchJobs } from '../api/hr';
 import { useAuth } from '../hooks/useAuth';
 import type { JobDescription } from '../types/api';
+import PageHeader from '../components/ui/PageHeader';
+import StatCard from '../components/ui/StatCard';
+import LoadingState from '../components/ui/LoadingState';
+import ErrorState from '../components/ui/ErrorState';
+import EmptyState from '../components/ui/EmptyState';
 
 const HrDashboardPage = () => {
   const { token } = useAuth();
@@ -27,62 +32,51 @@ const HrDashboardPage = () => {
     [draftJobs.length, jobs.length, openJobs.length]
   );
 
-  const renderJobCard = (job: JobDescription) => (
-    <Link key={job._id} to={`/hr/jobs/${job._id}`} className="card" style={{ textDecoration: 'none' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-        <h3 style={{ margin: 0 }}>{job.title}</h3>
-        <span className={`status-badge ${job.status}`}>{job.status.replace('_', ' ')}</span>
-      </div>
-      <p style={{ color: '#475569', marginTop: 0 }}>{job.location || 'Remote / Flexible'}</p>
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        {(job.tags || job.requiredSkills?.slice(0, 3) || []).map((chip) => (
-          <span
-            key={chip}
-            style={{
-              fontSize: '0.85rem',
-              background: '#e2e8f0',
-              borderRadius: '999px',
-              padding: '0.15rem 0.75rem'
-            }}
-          >
-            {chip}
-          </span>
-        ))}
-      </div>
-    </Link>
-  );
-
   return (
-    <div className="grid" style={{ gap: '1.5rem' }}>
-      <section className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+    <div className="page-shell">
+      <PageHeader title="HR Dashboard" subtitle="Track and access active job workflows." />
+
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {summary.map((item) => (
-          <div key={item.label} className="card" style={{ textAlign: 'center' }}>
-            <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.9rem' }}>{item.label}</p>
-            <div style={{ fontSize: '2rem', fontWeight: 700 }}>{item.value}</div>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.value} />
         ))}
       </section>
 
-      <section className="grid">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <h2 style={{ margin: 0 }}>Job Postings</h2>
-          <small style={{ color: '#94a3b8' }}>Select a role to open its workflow</small>
+      <section className="space-y-4">
+        <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+          <h2 className="text-xl font-semibold text-brand-navy">Job Postings</h2>
+          <small className="text-brand-ash">Select a role to open its workflow.</small>
         </div>
 
-        {jobsQuery.isLoading && <p>Loading jobs…</p>}
+        {jobsQuery.isLoading && <LoadingState message="Loading jobs…" />}
         {jobsQuery.isError && (
-          <p style={{ color: '#b91c1c' }}>Failed to load jobs: {(jobsQuery.error as Error)?.message}</p>
+          <ErrorState message={`Failed to load jobs: ${(jobsQuery.error as Error)?.message}`} onRetry={() => jobsQuery.refetch()} />
         )}
-
-        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
-          {jobs.map(renderJobCard)}
-        </div>
 
         {!jobsQuery.isLoading && jobs.length === 0 && (
-          <div className="card" style={{ textAlign: 'center', color: '#94a3b8' }}>
-            No job postings yet. Use the backend HR endpoints to seed one.
-          </div>
+          <EmptyState message="No job postings yet. Seed data via backend HR endpoints to get started." />
         )}
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {jobs.map((job) => (
+            <Link key={job._id} to={`/hr/jobs/${job._id}`} className="card space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-brand-navy">{job.title}</h3>
+                  <p className="text-sm text-brand-ash">{job.location || 'Remote / Flexible'}</p>
+                </div>
+                <span className={`status-badge ${job.status}`}>{job.status.replace('_', ' ')}</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(job.tags || job.requiredSkills?.slice(0, 3) || []).map((chip) => (
+                  <span key={chip} className="chip">
+                    {chip}
+                  </span>
+                ))}
+              </div>
+            </Link>
+          ))}
+        </div>
       </section>
     </div>
   );

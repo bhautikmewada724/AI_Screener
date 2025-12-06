@@ -2,28 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 
 import { fetchSystemOverview } from '../api/admin';
 import { useAuth } from '../hooks/useAuth';
-
-const StatCard = ({ label, value, description }: { label: string; value: number | string; description?: string }) => (
-  <div className="card" style={{ textAlign: 'center' }}>
-    <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.9rem' }}>{label}</p>
-    <div style={{ fontSize: '2rem', fontWeight: 700 }}>{value}</div>
-    {description && <small style={{ color: '#94a3b8' }}>{description}</small>}
-  </div>
-);
-
-const DistributionList = ({ title, data }: { title: string; data: Record<string, number> }) => (
-  <div className="card">
-    <h3 style={{ marginTop: 0 }}>{title}</h3>
-    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.35rem' }}>
-      {Object.entries(data).map(([key, value]) => (
-        <li key={key} style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500 }}>
-          <span style={{ textTransform: 'capitalize' }}>{key.replace('_', ' ')}</span>
-          <span>{value}</span>
-        </li>
-      ))}
-    </ul>
-  </div>
-);
+import PageHeader from '../components/ui/PageHeader';
+import StatCard from '../components/ui/StatCard';
+import InfoListCard from '../components/ui/InfoListCard';
+import LoadingState from '../components/ui/LoadingState';
+import ErrorState from '../components/ui/ErrorState';
 
 const AdminOverviewPage = () => {
   const { token } = useAuth();
@@ -38,30 +21,27 @@ const AdminOverviewPage = () => {
   const overview = overviewQuery.data;
 
   return (
-    <div className="grid" style={{ gap: '1.5rem' }}>
-      <header>
-        <h1 style={{ marginBottom: '0.5rem' }}>System Overview</h1>
-        <p style={{ color: '#475569' }}>High-level metrics across users, jobs, and applications.</p>
-      </header>
+    <div className="page-shell">
+      <PageHeader title="System Overview" subtitle="High-level metrics across users, jobs, and applications." />
 
-      {overviewQuery.isLoading && <p>Loading metrics…</p>}
+      {overviewQuery.isLoading && <LoadingState message="Loading metrics…" />}
       {overviewQuery.isError && (
-        <p style={{ color: '#b91c1c' }}>Failed to load overview: {(overviewQuery.error as Error).message}</p>
+        <ErrorState message={`Failed to load overview: ${(overviewQuery.error as Error).message}`} onRetry={() => overviewQuery.refetch()} />
       )}
 
       {overview && (
         <>
-          <section className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard label="Total Users" value={overview.users.total} />
             <StatCard label="Total Jobs" value={overview.jobs.total} />
             <StatCard label="Total Applications" value={overview.applications.total} />
           </section>
 
-          <section className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
-            <DistributionList title="Users by Role" data={overview.users.byRole} />
-            <DistributionList title="Users by Status" data={overview.users.byStatus} />
-            <DistributionList title="Jobs by Status" data={overview.jobs.byStatus} />
-            <DistributionList title="Applications by Status" data={overview.applications.byStatus} />
+          <section className="grid gap-6 lg:grid-cols-2">
+            <InfoListCard title="Users by Role" data={overview.users.byRole} />
+            <InfoListCard title="Users by Status" data={overview.users.byStatus} />
+            <InfoListCard title="Jobs by Status" data={overview.jobs.byStatus} />
+            <InfoListCard title="Applications by Status" data={overview.applications.byStatus} />
           </section>
         </>
       )}

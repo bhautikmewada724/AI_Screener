@@ -1,0 +1,99 @@
+# AI Service Contracts (Current State – Phase 7 Baseline)
+
+This document freezes the request/response schemas that the Node backend and React frontend rely on when communicating with the FastAPI `ai-service`. All changes during the upgrade must remain backward-compatible with the fields marked **Required** below. Fields listed as **Extensible** can be enriched as long as their existing semantics stay intact.
+
+---
+
+## `POST /ai/parse-resume`
+**Used by:** `backend/src/controllers/resumeController.js` → stored in `Resume.parsedData`, rendered via `frontend/src/types/api.ts (ResumePayload)`
+
+### Request (`ResumeParseRequest`)
+| Field | Type | Required | Notes / Consumers |
+| --- | --- | --- | --- |
+| `file_path` | `string` | ✅ | Absolute path stored by Multer; backend always sends this (AI must be able to open it). |
+| `file_name` | `string` | ✅ | Original filename (used only for logging/UI today). |
+| `user_id` | `string` | ✅ | Candidate Mongo `_id`; persisted for traceability. |
+| `resume_text` | `string \| null` | ⚪ | Optional fallback text if direct file parsing fails. |
+| `candidate_name` | `string \| null` | ⚪ | Optional metadata, currently unused but keep compatible. |
+
+### Response (`ResumeParseResponse`)
+| Field | Type | Required | Notes / Consumers |
+| --- | --- | --- | --- |
+| `summary` | `string` | ✅ | Displayed in HR UI (`ResumeViewer`) and stored in Mongo. |
+| `skills` | `string[]` | ✅ | Must be a flat array; drives matching + UI chips. |
+| `experience` | `Array<{ company: string; role: string; duration?: string }>` | ✅ | Persisted but UI today only shows `company`/`role`. Duration string is acceptable; future upgrade may add structured dates. |
+| `education` | `Array<{ institution: string; degree?: string; graduation_year?: number }>` | ✅ | Saved in Mongo. |
+| `embeddings` | `number[]` | ✅ (contract) | Stored in `Resume.parsedData.embeddings`; not yet surfaced on frontend but backend expects the field to exist (can be empty array). |
+| `warnings` | `string[]` | ⚪ | Non-fatal parsing issues; stored with the resume so HR can review. |
+| `error` / `warnings` | (not present today) | Extensible | New diagnostic fields may be added but cannot replace core fields above. |
+
+---
+
+## `POST /ai/parse-jd`
+**Current usage:** not yet wired into controllers, but the schema should remain backward-compatible for upcoming automation inside `jobController`.
+
+### Request (`JobDescriptionRequest`)
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `job_title` | `string` | ✅ | Human-readable title entered in UI. |
+| `job_description` | `string` | ✅ | Raw JD text body. |
+| `location` | `string \| null` | ⚪ | Optional metadata; backend forwards if present. |
+
+### Response (`JobDescriptionResponse`)
+| Field | Type | Required | Notes / Consumers |
+| --- | --- | --- | --- |
+| `required_skills` | `string[]` | ✅ | When automation is wired up, this array will populate `JobDescription.requiredSkills`. Keep normalized casing. |
+| `summary` | `string` | ✅ | To be stored alongside the JD or used in UI previews. |
+| `embeddings` | `number[]` | ✅ (can be empty) | Will be saved in `JobDescription.embeddings` for semantic search/matching. |
+| `nice_to_have_skills`, `seniority_level`, `job_category` | (not yet present) | Extensible | Future responses may append these fields; backend/FE will treat them as additive. |
+
+---
+
+## `POST /ai/match`
+**Used by:** `jobController.getJobMatches`, `hrWorkflowService.ensureMatchResult`, `applicationController.applyToJob`, HR score previews. Results are persisted in `MatchResult` and exposed to frontend types (`matchScore`, `matchedSkills`, `matchExplanation`).
+
+### Request (`MatchRequest`)
+| Field | Type | Required | Notes / Consumers |
+| --- | --- | --- | --- |
+| `resume_skills` | `string[]` | ✅ | Derived from `Resume.parsedData.skills`. |
+| `job_required_skills` | `string[]` | ✅ | Pulled from `JobDescription.requiredSkills`. |
+| `resume_summary` | `string \| null` | ⚪ | Provides additional context for LLM scoring. |
+| `job_summary` | `string \| null` | ⚪ | Usually the raw JD description today. |
+| (future) `resume_embeddings`, `job_embeddings` | Extensible | Can be added later; backend will pass through once supported. |
+
+### Response (`MatchResponse`)
+| Field | Type | Required | Notes / Consumers |
+| --- | --- | --- | --- |
+| `match_score` | `number (0-1)` | ✅ | Stored as `MatchResult.matchScore` and rendered throughout UI. Keep deterministic & normalized. |
+| `matched_skills` | `string[]` | ✅ | Displayed in HR dashboard and stored in DB. |
+| `notes` | `string` | ✅ | Human-readable summary plus remediation tips, stored alongside the explanation object. |
+| `missing_critical_skills` | `string[]` | ⚪ | Used to populate `MatchResult.missingSkills` and surfaced to HR reviewers. |
+| `embedding_similarity` | `number (0-1)` | ⚪ | Stored for diagnostics and explainability UIs. |
+| `explanation` | `object` | ⚪ | Structured metadata (weights, missing skills, experience alignment). Any new fields should be additive. |
+
+---
+
+## `POST /ai/recommend`
+**Usage today:** Not yet invoked. Model exists to support candidate-tailored job recommendations persisted via `Recommendation` schema.
+
+### Request (`RecommendationRequest`)
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `candidate_id` | `string \| null` | ⚪ | Enables lookup of stored preferences/history. |
+| `skills` | `string[]` | ✅ (current expectation) | Resume-derived normalized skills. |
+| `preferred_locations` | `string[]` | ⚪ | Optional filter list; may be empty. |
+
+### Response (`RecommendationResponse`)
+| Field | Type | Required | Notes / Consumers |
+| --- | --- | --- | --- |
+| `ranked_jobs` | `Array<{ job_id: string; title: string; score: number }>` | ✅ | Will be transformed into `Recommendation.recommendedJobs[{ jobId, score, rank, reason }]`. `score` must be 0–1. |
+| `generated_at` | `ISO timestamp string` | ✅ | Stored as `Recommendation.generatedAt`. |
+| `explanation`, `filters_applied` | Extensible | Safe to add for richer UI context once backend/frontends consume them. |
+
+---
+
+### Compatibility Notes
+- **Field casing:** Backend currently tolerates both `snake_case` and `camelCase` for `match_score`/`matchScore`, `matched_skills`/`matchedSkills`. Going forward, the AI service should stick to the snake_case schemas above while backend keeps its fallback mapper until every consumer is updated.
+- **Error handling:** AI service should return HTTP 4xx/5xx with `{ message, detail? }` JSON bodies. Backend wraps failures and stores `{ error: string }` inside `resume.parsedData` when parsing fails.
+- **Extending schemas:** Always add new fields rather than renaming/removing existing ones. Coordinate backend/frontend updates when introducing new required outputs so the contracts stay synchronized.
+

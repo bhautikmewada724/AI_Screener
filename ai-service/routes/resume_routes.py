@@ -1,24 +1,13 @@
 from fastapi import APIRouter
 
-from models.resume import ExperienceItem, EducationItem, ResumeParseRequest, ResumeParseResponse
-from utils.mock_data import fake_embeddings
+from models.resume import ResumeParseRequest, ResumeParseResponse
+from services.resume_parser import parse_resume
 
 router = APIRouter(prefix='/ai', tags=['AI - Resume'])
 
 
 @router.post('/parse-resume', response_model=ResumeParseResponse)
-def parse_resume(payload: ResumeParseRequest) -> ResumeParseResponse:
-    """Return mocked resume insights that downstream services can rely on."""
-    return ResumeParseResponse(
-        summary=f"Mock summary generated for file {payload.file_name}.",
-        skills=['Python', 'FastAPI', 'MongoDB'],
-        experience=[
-            ExperienceItem(company='Mock Corp', role='Software Engineer', duration='2021-2024'),
-            ExperienceItem(company='Sample Inc', role='Intern', duration='2020-2021')
-        ],
-        education=[
-            EducationItem(institution='Example University', degree='B.Sc. Computer Science', graduation_year=2020)
-        ],
-        embeddings=fake_embeddings()
-    )
+def parse_resume_route(payload: ResumeParseRequest) -> ResumeParseResponse:
+  """Parse resumes into structured summaries, skills, experience, and embeddings."""
+  return parse_resume(payload)
 

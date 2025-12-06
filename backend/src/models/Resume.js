@@ -37,8 +37,15 @@ const parsedDataSchema = new Schema(
       type: [educationSchema],
       default: []
     },
+    location: {
+      type: String
+    },
     embeddings: {
       type: [Number],
+      default: []
+    },
+    warnings: {
+      type: [String],
       default: []
     }
   },

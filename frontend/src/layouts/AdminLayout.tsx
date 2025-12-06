@@ -20,21 +20,19 @@ const AdminLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 lg:grid lg:grid-cols-[280px_1fr]">
-      <aside className="flex flex-col gap-6 bg-brand-navy px-6 py-8 text-white">
+    <div className="sidebar-shell">
+      <aside className="sidebar-panel">
         <div className="space-y-1">
-          <p className="text-sm uppercase tracking-wide text-white/60">AI Screener</p>
+          <p className="text-xs uppercase tracking-wide text-white/60">AI Screener</p>
           <h2 className="text-2xl font-semibold">Admin Console</h2>
           <small className="text-white/70">Welcome, {user.name}</small>
         </div>
-        <nav className="flex flex-col gap-2">
+        <nav className="flex flex-col gap-1">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
-              className={({ isActive }) =>
-                `admin-nav-link ${isActive ? 'active' : ''}`
-              }
+              className={({ isActive }) => `sidebar-nav-link ${isActive ? 'active' : ''}`}
             >
               {item.label}
             </NavLink>
@@ -44,8 +42,10 @@ const AdminLayout = () => {
           Logout
         </button>
       </aside>
-      <main className="bg-slate-50 p-6 lg:p-10">
-        <Outlet />
+      <main className="bg-brand-surface p-6 lg:p-10">
+        <div className="page-shell">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

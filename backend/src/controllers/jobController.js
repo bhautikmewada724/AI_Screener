@@ -2,6 +2,7 @@ import JobDescription from '../models/JobDescription.js';
 import Resume from '../models/Resume.js';
 import MatchResult from '../models/MatchResult.js';
 import { matchResumeToJob } from '../services/aiService.js';
+import { normalizeAiMatchResponse } from '../services/hrWorkflowService.js';
 
 const ensureOwnerOrAdmin = (job, user) => {
   if (user.role === 'admin') return;
@@ -200,13 +201,17 @@ export const getJobMatches = async (req, res, next) => {
             job_summary: job.description
           });
 
+          const normalized = normalizeAiMatchResponse(aiResponse);
+
           try {
             match = await MatchResult.create({
-            resumeId: resume._id,
-            jobId: job._id,
-            matchScore: aiResponse.match_score ?? aiResponse.matchScore ?? 0,
-            matchedSkills: aiResponse.matched_skills ?? aiResponse.matchedSkills ?? [],
-            explanation: aiResponse.notes || 'Match generated via AI service.'
+              resumeId: resume._id,
+              jobId: job._id,
+              matchScore: normalized.matchScore,
+              matchedSkills: normalized.matchedSkills,
+              missingSkills: normalized.missingSkills,
+              embeddingSimilarity: normalized.embeddingSimilarity,
+              explanation: normalized.explanation
             });
           } catch (creationError) {
             if (creationError.code === 11000) {
@@ -243,6 +248,8 @@ export const getJobMatches = async (req, res, next) => {
         matchScore: match.matchScore,
         matchedSkills: match.matchedSkills,
         explanation: match.explanation,
+        missingSkills: match.missingSkills,
+        embeddingSimilarity: match.embeddingSimilarity,
         resumeSummary: resume.parsedData?.summary,
         resumeSkills: resume.parsedData?.skills
       })),

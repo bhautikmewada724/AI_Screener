@@ -57,6 +57,51 @@ export const fetchApplicationWithJob = async (applicationId, user) => {
   return { application, job };
 };
 
+const pickField = (aiResponse, snake, camel, fallback = undefined) => {
+  if (typeof aiResponse[snake] !== 'undefined' && aiResponse[snake] !== null) {
+    return aiResponse[snake];
+  }
+  if (typeof aiResponse[camel] !== 'undefined' && aiResponse[camel] !== null) {
+    return aiResponse[camel];
+  }
+  return fallback;
+};
+
+export const normalizeAiMatchResponse = (aiResponse = {}) => {
+  const matchScore = pickField(aiResponse, 'match_score', 'matchScore', 0);
+  const matchedSkills = pickField(aiResponse, 'matched_skills', 'matchedSkills', []) || [];
+  const missingSkills = pickField(aiResponse, 'missing_critical_skills', 'missingCriticalSkills', []) || [];
+  const embeddingSimilarity = pickField(aiResponse, 'embedding_similarity', 'embeddingSimilarity', 0);
+
+  let explanation = aiResponse.explanation;
+  if (!explanation || typeof explanation !== 'object') {
+    explanation = {};
+  } else {
+    explanation = { ...explanation };
+  }
+
+  if (!explanation.notes && aiResponse.notes) {
+    explanation.notes = aiResponse.notes;
+  }
+  if (!explanation.missingSkills) {
+    explanation.missingSkills = missingSkills;
+  }
+  if (typeof explanation.embeddingSimilarity === 'undefined') {
+    explanation.embeddingSimilarity = embeddingSimilarity;
+  }
+  if (!explanation.source) {
+    explanation.source = 'ai-service';
+  }
+
+  return {
+    matchScore,
+    matchedSkills,
+    missingSkills,
+    embeddingSimilarity,
+    explanation
+  };
+};
+
 export const ensureMatchResult = async ({ job, resume }) => {
   let matchResult = await MatchResult.findOne({
     jobId: job._id,
@@ -70,14 +115,17 @@ export const ensureMatchResult = async ({ job, resume }) => {
       resume_summary: resume.parsedData?.summary,
       job_summary: job.description
     });
+    const normalized = normalizeAiMatchResponse(aiResponse);
 
     try {
       matchResult = await MatchResult.create({
         jobId: job._id,
         resumeId: resume._id,
-        matchScore: aiResponse.match_score ?? aiResponse.matchScore ?? 0,
-        matchedSkills: aiResponse.matched_skills ?? aiResponse.matchedSkills ?? [],
-        explanation: aiResponse.notes || 'Match generated via AI service.'
+        matchScore: normalized.matchScore,
+        matchedSkills: normalized.matchedSkills,
+        missingSkills: normalized.missingSkills,
+        embeddingSimilarity: normalized.embeddingSimilarity,
+        explanation: normalized.explanation
       });
     } catch (error) {
       if (error.code === 11000) {
