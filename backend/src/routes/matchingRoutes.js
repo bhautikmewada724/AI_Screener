@@ -12,7 +12,7 @@ const router = Router();
  *   get:
  *     tags:
  *       - AI Matching
- *     summary: Fetch AI-ranked candidates for a job with explanations.
+ *     summary: Fetch FastAPI-ranked candidates for a job with explanations.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -50,7 +50,7 @@ router.get('/jobs/:jobId', authenticate, authorizeRoles(ROLES.ADMIN, ROLES.HR), 
  *   post:
  *     tags:
  *       - AI Matching
- *     summary: Simulate matching a resume to a job and return score/explanation.
+ *     summary: Run the local heuristic matcher for experimentation and return score/explanation.
  *     security:
  *       - bearerAuth: []
  *     requestBody:

@@ -1,7 +1,10 @@
-import JobDescription from '../models/JobDescription.js';
-import Resume from '../models/Resume.js';
 import MatchResult from '../models/MatchResult.js';
 
+/**
+ * Deterministic heuristic scoring helpers.
+ * These are reserved for simulation/sandbox flows so production traffic
+ * remains aligned with the FastAPI /ai/match contract.
+ */
 const DEFAULT_WEIGHTS = {
   skills: Number(process.env.MATCH_WEIGHT_SKILLS || 0.6),
   experience: Number(process.env.MATCH_WEIGHT_EXPERIENCE || 0.25),
@@ -145,40 +148,4 @@ export const scoreCandidateForJob = async ({ job, resume, forceRefresh = false }
 
   return match;
 };
-
-export const rankCandidatesForJob = async ({ jobId, minScore = 0, limit = 20, refresh = false }) => {
-  const job = await JobDescription.findById(jobId);
-  if (!job) {
-    const error = new Error('Job not found.');
-    error.status = 404;
-    throw error;
-  }
-
-  const resumes = await Resume.find({ status: 'parsed' }).lean();
-
-  const scored = [];
-  for (const resume of resumes) {
-    try {
-      const score = await scoreCandidateForJob({ job, resume, forceRefresh: refresh });
-      if (score.matchScore >= minScore) {
-        scored.push({ match: score, resume });
-      }
-    } catch (error) {
-      console.error(`Failed to score resume ${resume._id} for job ${jobId}:`, error.message);
-    }
-  }
-
-  const sorted = scored.sort((a, b) => b.match.matchScore - a.match.matchScore).slice(0, limit);
-  return sorted.map(({ match, resume }) => ({
-    matchId: match._id,
-    resumeId: resume._id,
-    candidateId: resume.userId,
-    matchScore: match.matchScore,
-    matchedSkills: match.matchedSkills,
-    explanation: match.explanation,
-    resumeSummary: resume.parsedData?.summary,
-    resumeSkills: resume.parsedData?.skills
-  }));
-};
-
 

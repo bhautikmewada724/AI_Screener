@@ -235,6 +235,11 @@ router.delete('/jobs/:jobId', authenticate, authorizeRoles('hr', 'admin'), delet
  *           type: integer
  *           minimum: 1
  *           maximum: 50
+ *       - in: query
+ *         name: refresh
+ *         schema:
+ *           type: boolean
+ *         description: Force recomputation of match scores before returning results.
  */
 router.get('/jobs/:jobId/matches', authenticate, authorizeRoles('hr', 'admin'), getJobMatches);
 

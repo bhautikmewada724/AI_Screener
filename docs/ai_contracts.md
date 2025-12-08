@@ -21,11 +21,14 @@ This document freezes the request/response schemas that the Node backend and Rea
 | --- | --- | --- | --- |
 | `summary` | `string` | ✅ | Displayed in HR UI (`ResumeViewer`) and stored in Mongo. |
 | `skills` | `string[]` | ✅ | Must be a flat array; drives matching + UI chips. |
-| `experience` | `Array<{ company: string; role: string; duration?: string }>` | ✅ | Persisted but UI today only shows `company`/`role`. Duration string is acceptable; future upgrade may add structured dates. |
-| `education` | `Array<{ institution: string; degree?: string; graduation_year?: number }>` | ✅ | Saved in Mongo. |
+| `experience` | `Array<{ company: string; role: string; duration?: string; startDate?: string; endDate?: string }>` | ✅ | Backend maps `duration` into the `description` field and keeps ISO dates when available for analytics. |
+| `education` | `Array<{ institution: string; degree?: string; graduation_year?: number }>` | ✅ | `graduation_year` is normalized to `education[].year` before persisting. |
+| `location` | `string` | ⚪ | Surface-level location inference stored in `Resume.parsedData.location`. |
 | `embeddings` | `number[]` | ✅ (contract) | Stored in `Resume.parsedData.embeddings`; not yet surfaced on frontend but backend expects the field to exist (can be empty array). |
 | `warnings` | `string[]` | ⚪ | Non-fatal parsing issues; stored with the resume so HR can review. |
 | `error` / `warnings` | (not present today) | Extensible | New diagnostic fields may be added but cannot replace core fields above. |
+
+> _Backend note:_ `transformAiResumeToParsedData` now guarantees camelCase fields (`education.year`, `parsedData.location`, etc.) so the frontend no longer sees raw snake_case data.
 
 ---
 
@@ -42,10 +45,14 @@ This document freezes the request/response schemas that the Node backend and Rea
 ### Response (`JobDescriptionResponse`)
 | Field | Type | Required | Notes / Consumers |
 | --- | --- | --- | --- |
-| `required_skills` | `string[]` | ✅ | When automation is wired up, this array will populate `JobDescription.requiredSkills`. Keep normalized casing. |
-| `summary` | `string` | ✅ | To be stored alongside the JD or used in UI previews. |
+| `required_skills` | `string[]` | ✅ | Populates `JobDescription.requiredSkills` when HR has not provided their own list. |
+| `summary` | `string` | ✅ | Persisted in `JobDescription.metadata.aiSummary` for future UI previews. |
 | `embeddings` | `number[]` | ✅ (can be empty) | Will be saved in `JobDescription.embeddings` for semantic search/matching. |
-| `nice_to_have_skills`, `seniority_level`, `job_category` | (not yet present) | Extensible | Future responses may append these fields; backend/FE will treat them as additive. |
+| `nice_to_have_skills` | `string[]` | ⚪ | Stored in `JobDescription.niceToHaveSkills`. |
+| `seniority_level`, `job_category` | ⚪ | Persisted in `JobDescription.metadata.seniorityLevel` / `.jobCategory`. |
+| `warnings` | `string[]` | ⚪ | Passed through for HR visibility. |
+
+> _Backend note:_ `transformAiJdToJobFields` merges AI metadata with any user-provided fields and only overwrites `requiredSkills`/`niceToHaveSkills` when the request leaves them empty.
 
 ---
 
@@ -66,10 +73,12 @@ This document freezes the request/response schemas that the Node backend and Rea
 | --- | --- | --- | --- |
 | `match_score` | `number (0-1)` | ✅ | Stored as `MatchResult.matchScore` and rendered throughout UI. Keep deterministic & normalized. |
 | `matched_skills` | `string[]` | ✅ | Displayed in HR dashboard and stored in DB. |
-| `notes` | `string` | ✅ | Human-readable summary plus remediation tips, stored alongside the explanation object. |
-| `missing_critical_skills` | `string[]` | ⚪ | Used to populate `MatchResult.missingSkills` and surfaced to HR reviewers. |
+| `notes` | `string` | ✅ | Stored within `MatchResult.explanation.notes` for HR context. |
+| `missing_critical_skills` | `string[]` | ⚪ | Saved to `MatchResult.missingSkills` and surfaced throughout review queues. |
 | `embedding_similarity` | `number (0-1)` | ⚪ | Stored for diagnostics and explainability UIs. |
 | `explanation` | `object` | ⚪ | Structured metadata (weights, missing skills, experience alignment). Any new fields should be additive. |
+
+> **Production flows:** All persisted scores now originate from `/ai/match`. The Node heuristic matcher is available solely via `/matching/simulate` for experimentation.
 
 ---
 

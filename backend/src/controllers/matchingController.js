@@ -1,6 +1,7 @@
 import JobDescription from '../models/JobDescription.js';
 import Resume from '../models/Resume.js';
-import { rankCandidatesForJob, scoreCandidateForJob } from '../services/matchingService.js';
+import { ensureMatchResult } from '../services/hrWorkflowService.js';
+import { scoreCandidateForJob } from '../services/matchingService.js';
 
 export const getRankedMatches = async (req, res, next) => {
   try {
@@ -9,14 +10,44 @@ export const getRankedMatches = async (req, res, next) => {
     const limit = Number(req.query.limit) || 20;
     const refresh = req.query.refresh === 'true';
 
-    const matches = await rankCandidatesForJob({
-      jobId,
-      minScore,
-      limit,
-      refresh
-    });
+    const job = await JobDescription.findById(jobId);
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found.' });
+    }
 
-    res.json({ data: matches });
+    const resumes = await Resume.find({ status: 'parsed' }).sort({ createdAt: -1 });
+    const matches = [];
+
+    for (const resume of resumes) {
+      try {
+        const match = await ensureMatchResult({ job, resume, forceRefresh: refresh });
+        if (match.matchScore >= minScore) {
+          matches.push({
+            match,
+            resume
+          });
+        }
+      } catch (error) {
+        console.error('Failed to score candidate:', error.message);
+      }
+    }
+
+    const sorted = matches.sort((a, b) => b.match.matchScore - a.match.matchScore).slice(0, limit);
+
+    const payload = sorted.map(({ match, resume }) => ({
+      matchId: match._id,
+      resumeId: resume._id,
+      candidateId: resume.userId,
+      matchScore: match.matchScore,
+      matchedSkills: match.matchedSkills,
+      explanation: match.explanation,
+      missingSkills: match.missingSkills,
+      embeddingSimilarity: match.embeddingSimilarity,
+      resumeSummary: resume.parsedData?.summary,
+      resumeSkills: resume.parsedData?.skills
+    }));
+
+    res.json({ data: payload });
   } catch (error) {
     next(error);
   }
@@ -36,6 +67,7 @@ export const simulateMatch = async (req, res, next) => {
       return res.status(404).json({ message: 'Job or resume not found.' });
     }
 
+    // NOTE: This endpoint intentionally uses the local heuristic service as a sandbox.
     const match = await scoreCandidateForJob({ job, resume, forceRefresh: true });
 
     res.json({

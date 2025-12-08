@@ -22,5 +22,6 @@ This guide enumerates the runtime configuration needed to boot the upgraded AI m
 | --- | --- | --- | --- |
 | `AI_SERVICE_URL` | Yes | none | Base URL pointing at the FastAPI microservice (`http://localhost:8000`). |
 | `MATCH_WEIGHT_*` | No | see `.env.example` | Existing knobs for the legacy matchingService; left untouched for backwards compatibility. |
+| `ENABLE_JD_PARSING` | No | `false` | When `true`, `jobController` will call `/ai/parse-jd` to auto-populate skills/metadata during job create/update. |
 
 Set these in `backend/.env` and `ai-service/.env` respectively. Never commit `.env` files or API keys—use your local shell, a secrets manager, or deployment-specific config. Once the env variables above are present the integration tests (`python -m pytest tests` and `npm test`) will run without needing to hit live providers.

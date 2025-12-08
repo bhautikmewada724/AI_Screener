@@ -37,6 +37,10 @@ const jobDescriptionSchema = new Schema(
       type: [String],
       default: []
     },
+    niceToHaveSkills: {
+      type: [String],
+      default: []
+    },
     embeddings: {
       type: [Number],
       default: []

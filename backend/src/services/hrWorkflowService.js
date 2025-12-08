@@ -102,42 +102,46 @@ export const normalizeAiMatchResponse = (aiResponse = {}) => {
   };
 };
 
-export const ensureMatchResult = async ({ job, resume }) => {
-  let matchResult = await MatchResult.findOne({
-    jobId: job._id,
-    resumeId: resume._id
+export const ensureMatchResult = async ({ job, resume, forceRefresh = false }) => {
+  if (!forceRefresh) {
+    const existing = await MatchResult.findOne({
+      jobId: job._id,
+      resumeId: resume._id
+    });
+    if (existing) {
+      return existing;
+    }
+  }
+
+  const aiResponse = await matchResumeToJob({
+    resume_skills: resume.parsedData?.skills || [],
+    job_required_skills: job.requiredSkills || [],
+    resume_summary: resume.parsedData?.summary,
+    job_summary: job.description
   });
 
-  if (!matchResult) {
-    const aiResponse = await matchResumeToJob({
-      resume_skills: resume.parsedData?.skills || [],
-      job_required_skills: job.requiredSkills || [],
-      resume_summary: resume.parsedData?.summary,
-      job_summary: job.description
-    });
-    const normalized = normalizeAiMatchResponse(aiResponse);
+  const normalized = normalizeAiMatchResponse(aiResponse);
 
-    try {
-      matchResult = await MatchResult.create({
-        jobId: job._id,
-        resumeId: resume._id,
+  const matchResult = await MatchResult.findOneAndUpdate(
+    {
+      jobId: job._id,
+      resumeId: resume._id
+    },
+    {
+      $set: {
         matchScore: normalized.matchScore,
         matchedSkills: normalized.matchedSkills,
         missingSkills: normalized.missingSkills,
         embeddingSimilarity: normalized.embeddingSimilarity,
         explanation: normalized.explanation
-      });
-    } catch (error) {
-      if (error.code === 11000) {
-        matchResult = await MatchResult.findOne({
-          jobId: job._id,
-          resumeId: resume._id
-        });
-      } else {
-        throw error;
       }
+    },
+    {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true
     }
-  }
+  );
 
   return matchResult;
 };
@@ -154,7 +158,7 @@ export const refreshApplicationMatch = async (application) => {
     throw error;
   }
 
-  const matchResult = await ensureMatchResult({ job, resume });
+  const matchResult = await ensureMatchResult({ job, resume, forceRefresh: true });
 
   application.matchResultId = matchResult._id;
   application.matchScore = matchResult.matchScore;

@@ -24,7 +24,8 @@ This document summarizes the MongoDB collections that now back the AI Screener p
 - Key fields:
   - `hrId` → `User` reference (HR owner, required, indexed).
   - `title`, `description`, `location`, `employmentType`, `salaryRange`.
-  - `requiredSkills` array + optional `embeddings`.
+  - `requiredSkills` array + optional `niceToHaveSkills` for AI-enriched hints, plus optional `embeddings`.
+  - `metadata` (Mongoose Map) captures AI-derived attributes such as `seniorityLevel`, `jobCategory`, and `aiSummary`.
   - Workflow metadata: `status` (`draft|open|on_hold|closed|archived`), `openings`, `tags`, and `reviewStages`.
 - Timestamps enabled. Index on `{ title: 1 }`.
 

@@ -1,8 +1,49 @@
 import JobDescription from '../models/JobDescription.js';
 import Resume from '../models/Resume.js';
 import MatchResult from '../models/MatchResult.js';
-import { matchResumeToJob } from '../services/aiService.js';
-import { normalizeAiMatchResponse } from '../services/hrWorkflowService.js';
+import { parseJobDescription } from '../services/aiService.js';
+import { ensureMatchResult } from '../services/hrWorkflowService.js';
+import { transformAiJdToJobFields } from '../services/aiTransformers.js';
+
+const shouldAutoParseJd = () => String(process.env.ENABLE_JD_PARSING).toLowerCase() === 'true';
+
+const applyAiJobFields = (target, aiFields = {}) => {
+  if (!aiFields) return;
+
+  if (!target.requiredSkills?.length && aiFields.requiredSkills?.length) {
+    target.requiredSkills = aiFields.requiredSkills;
+  }
+
+  if (!target.niceToHaveSkills?.length && aiFields.niceToHaveSkills?.length) {
+    target.niceToHaveSkills = aiFields.niceToHaveSkills;
+  }
+
+  if (aiFields.metadata && Object.keys(aiFields.metadata).length) {
+    const current =
+      typeof target.metadata?.toObject === 'function'
+        ? target.metadata.toObject()
+        : { ...(target.metadata || {}) };
+    target.metadata = { ...current, ...aiFields.metadata };
+  }
+};
+
+const maybeParseJobDescription = async ({ title, description, location }) => {
+  if (!shouldAutoParseJd() || !description) {
+    return null;
+  }
+
+  try {
+    const aiResponse = await parseJobDescription({
+      job_title: title,
+      job_description: description,
+      location
+    });
+    return transformAiJdToJobFields(aiResponse);
+  } catch (error) {
+    console.warn('JD parsing failed:', error.message);
+    return null;
+  }
+};
 
 const ensureOwnerOrAdmin = (job, user) => {
   if (user.role === 'admin') return;
@@ -26,7 +67,8 @@ export const createJob = async (req, res, next) => {
       status,
       openings,
       tags = [],
-      reviewStages
+      reviewStages,
+      niceToHaveSkills = []
     } = req.body;
 
     if (!title || !description) {
@@ -35,7 +77,7 @@ export const createJob = async (req, res, next) => {
 
     const hrId = req.user.role === 'admin' && req.body.hrId ? req.body.hrId : req.user.id;
 
-    const job = await JobDescription.create({
+    const jobPayload = {
       hrId,
       title,
       description,
@@ -43,12 +85,20 @@ export const createJob = async (req, res, next) => {
       employmentType,
       salaryRange,
       requiredSkills,
+      niceToHaveSkills,
       embeddings,
       status,
       openings,
       tags,
       reviewStages
-    });
+    };
+
+    if (shouldAutoParseJd()) {
+      const aiFields = await maybeParseJobDescription({ title, description, location });
+      applyAiJobFields(jobPayload, aiFields);
+    }
+
+    const job = await JobDescription.create(jobPayload);
 
     return res.status(201).json(job);
   } catch (error) {
@@ -126,6 +176,7 @@ export const updateJob = async (req, res, next) => {
       'employmentType',
       'salaryRange',
       'requiredSkills',
+      'niceToHaveSkills',
       'embeddings',
       'status',
       'openings',
@@ -141,6 +192,20 @@ export const updateJob = async (req, res, next) => {
 
     if (req.user.role === 'admin' && typeof req.body.hrId !== 'undefined') {
       job.hrId = req.body.hrId;
+    }
+
+    if (
+      shouldAutoParseJd() &&
+      Object.prototype.hasOwnProperty.call(req.body, 'description') &&
+      typeof job.description === 'string' &&
+      job.description.trim()
+    ) {
+      const aiFields = await maybeParseJobDescription({
+        title: job.title,
+        description: job.description,
+        location: job.location
+      });
+      applyAiJobFields(job, aiFields);
     }
 
     await job.save();
@@ -183,50 +248,17 @@ export const getJobMatches = async (req, res, next) => {
     const page = Number(req.query.page) || 1;
     const limit = Math.min(Number(req.query.limit) || 10, 50);
 
+    const refreshScores = req.query.refresh === 'true';
     const resumes = await Resume.find({ status: 'parsed' }).sort({ createdAt: -1 });
     const matches = [];
 
     for (const resume of resumes) {
-      let match = await MatchResult.findOne({
-        resumeId: resume._id,
-        jobId: job._id
-      });
-
-      if (!match) {
-        try {
-          const aiResponse = await matchResumeToJob({
-            resume_skills: resume.parsedData?.skills || [],
-            job_required_skills: job.requiredSkills || [],
-            resume_summary: resume.parsedData?.summary,
-            job_summary: job.description
-          });
-
-          const normalized = normalizeAiMatchResponse(aiResponse);
-
-          try {
-            match = await MatchResult.create({
-              resumeId: resume._id,
-              jobId: job._id,
-              matchScore: normalized.matchScore,
-              matchedSkills: normalized.matchedSkills,
-              missingSkills: normalized.missingSkills,
-              embeddingSimilarity: normalized.embeddingSimilarity,
-              explanation: normalized.explanation
-            });
-          } catch (creationError) {
-            if (creationError.code === 11000) {
-              match = await MatchResult.findOne({
-                resumeId: resume._id,
-                jobId: job._id
-              });
-            } else {
-              throw creationError;
-            }
-          }
-        } catch (error) {
-          console.error('Failed to generate match:', error.message);
-          continue;
-        }
+      let match;
+      try {
+        match = await ensureMatchResult({ job, resume, forceRefresh: refreshScores });
+      } catch (error) {
+        console.error('Failed to generate match:', error.message);
+        continue;
       }
 
       if (match.matchScore >= minScore) {

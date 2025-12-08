@@ -1,5 +1,6 @@
 import Resume from '../models/Resume.js';
 import { parseResume as parseResumeAI } from '../services/aiService.js';
+import { transformAiResumeToParsedData } from '../services/aiTransformers.js';
 
 export const uploadResume = async (req, res, next) => {
   try {
@@ -21,7 +22,7 @@ export const uploadResume = async (req, res, next) => {
         file_name: resume.originalFileName,
         user_id: req.user.id
       });
-      resume.parsedData = parsedData;
+      resume.parsedData = transformAiResumeToParsedData(parsedData);
       resume.status = 'parsed';
     } catch (error) {
       resume.status = 'failed';

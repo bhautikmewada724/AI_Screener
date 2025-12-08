@@ -26,11 +26,20 @@ export interface JobDescription {
   employmentType?: string;
   salaryRange?: SalaryRange;
   requiredSkills?: string[];
+   niceToHaveSkills?: string[];
   openings?: number;
   tags?: string[];
   reviewStages?: string[];
   hrId?: string;
+  metadata?: JobMetadata;
   createdAt: string;
+}
+
+export interface JobMetadata {
+  [key: string]: string | undefined;
+  seniorityLevel?: string;
+  jobCategory?: string;
+  aiSummary?: string;
 }
 
 export interface ResumeExperience {
@@ -50,7 +59,9 @@ export interface ResumePayload {
     skills?: string[];
     experience?: ResumeExperience[];
     education?: Array<{ institution?: string; degree?: string; year?: number }>;
+    location?: string;
     warnings?: string[];
+    embeddings?: number[];
   };
 }
 
@@ -70,13 +81,21 @@ export interface ApplicationRecord {
   reviewStage?: string;
   matchScore: number;
   matchedSkills: string[];
-  matchExplanation?: string | Record<string, unknown>;
+  matchExplanation?: MatchExplanation | string | null;
   missingSkills?: string[];
   embeddingSimilarity?: number;
   decisionReason?: string;
   notesCount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface MatchExplanation {
+  notes?: string;
+  missingSkills?: string[];
+  embeddingSimilarity?: number;
+  source?: string;
+  [key: string]: unknown;
 }
 
 export interface ReviewNote {
