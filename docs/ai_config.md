@@ -10,7 +10,12 @@ This guide enumerates the runtime configuration needed to boot the upgraded AI m
 | `OPENAI_API_KEY` | When `AI_PROVIDER=openai` | none | API key injected into the OpenAI Python SDK. |
 | `LLM_MODEL_NAME` | No | `gpt-4o-mini` | Chat-completion model used for summaries + parsing. |
 | `LLM_TEMPERATURE` | No | `0.2` | Sampling temperature for the LLM client. |
+| `LLM_MAX_TOKENS` | No | `600` | Cap for chat-completion responses to keep outputs bounded. |
+| `LLM_TIMEOUT` | No | `30` | Request timeout (seconds) for LLM calls. |
 | `EMBEDDING_MODEL_NAME` | No | `text-embedding-3-small` | Embedding model used for matching/recommendations. |
+| `EMBEDDING_TIMEOUT` | No | `30` | Request timeout (seconds) for embedding generation. |
+
+> When `AI_PROVIDER=openai` but credentials or dependencies are missing, the service logs a warning and automatically falls back to deterministic mock providers so the backend can continue operating.
 | `PORT` | No | `8000` | Port the FastAPI app listens on. |
 | `ENVIRONMENT` | No | `development` | Included in `/health` for observability. |
 

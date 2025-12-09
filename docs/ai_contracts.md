@@ -76,9 +76,11 @@ This document freezes the request/response schemas that the Node backend and Rea
 | `notes` | `string` | ✅ | Stored within `MatchResult.explanation.notes` for HR context. |
 | `missing_critical_skills` | `string[]` | ⚪ | Saved to `MatchResult.missingSkills` and surfaced throughout review queues. |
 | `embedding_similarity` | `number (0-1)` | ⚪ | Stored for diagnostics and explainability UIs. |
-| `explanation` | `object` | ⚪ | Structured metadata (weights, missing skills, experience alignment). Any new fields should be additive. |
+| `explanation` | `object` | ⚪ | Structured metadata including `components.skills/embeddings/experience/location`, per-component weights, normalized scores, and the same summary string returned in `notes`. Any new fields should be additive. |
 
 > **Production flows:** All persisted scores now originate from `/ai/match`. The Node heuristic matcher is available solely via `/matching/simulate` for experimentation.
+
+> **Scoring breakdown:** The FastAPI service currently weighs skills (0.4), embeddings (0.3), experience (0.2), and location (0.1). Each component is clamped to [0, 1] and reported inside the `explanation.components` object so future tuning can be audited easily.
 
 ---
 

@@ -31,47 +31,54 @@ const CommentPanel = ({ notes, loading, onSubmit }: CommentPanelProps) => {
   };
 
   return (
-    <div className="card" style={{ display: 'grid', gap: '1rem' }}>
+    <div className="card space-y-4">
       <div>
         <strong>Comments & Collaboration</strong>
-        <p style={{ margin: 0, color: '#94a3b8' }}>Coordinate decisions with your HR team.</p>
+        <p className="text-sm text-brand-ash">Coordinate decisions with your HR team.</p>
       </div>
-      <form onSubmit={handleSave} style={{ display: 'grid', gap: '0.75rem' }}>
+      <form onSubmit={handleSave} className="flex flex-col gap-3">
         <textarea
           rows={3}
           placeholder="Add a note about this candidate…"
           value={body}
+          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-brand-navy"
           onChange={(event) => setBody(event.target.value)}
-          style={{ width: '100%', borderRadius: '0.75rem', border: '1px solid #cbd5f5', padding: '0.75rem' }}
         />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <select
             value={visibility}
             onChange={(event) => setVisibility(event.target.value as 'shared' | 'private')}
-            style={{ flex: 1, borderRadius: '0.75rem', padding: '0.5rem', border: '1px solid #cbd5f5' }}
+            className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-brand-navy"
           >
             <option value="shared">Visible to HR team</option>
             <option value="private">Private</option>
           </select>
-          <button className="btn" style={{ background: '#0f172a', color: '#fff' }} disabled={saving}>
+          <button className="btn btn-primary w-full sm:w-auto" disabled={saving}>
             {saving ? 'Saving…' : 'Add note'}
           </button>
         </div>
-        {error && <small style={{ color: '#b91c1c' }}>{error}</small>}
+        {error && <small className="text-sm text-rose-600">{error}</small>}
       </form>
 
-      <div style={{ maxHeight: 250, overflow: 'auto', display: 'grid', gap: '0.75rem' }}>
-        {loading && <small>Loading comments…</small>}
-        {!loading && notes.length === 0 && <small style={{ color: '#94a3b8' }}>No comments yet.</small>}
+      <div className="max-h-64 space-y-3 overflow-y-auto">
+        {loading && <small className="text-brand-ash">Loading comments…</small>}
+        {!loading && notes.length === 0 && <small className="text-brand-ash">No comments yet.</small>}
         {notes.map((note) => (
-          <div key={note._id} style={{ border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '0.75rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <div style={{ fontWeight: 600 }}>{note.authorId?.name}</div>
-              <small style={{ color: '#94a3b8' }}>{new Date(note.createdAt).toLocaleString()}</small>
+          <article key={note._id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 shadow-card-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-navy/10 text-sm font-semibold text-brand-navy">
+                {note.authorId?.name?.charAt(0) ?? '?'}
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-brand-navy">{note.authorId?.name || 'Teammate'}</div>
+                <small className="text-xs text-brand-ash">{new Date(note.createdAt).toLocaleString()}</small>
+              </div>
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand-ash">
+                {note.visibility}
+              </span>
             </div>
-            <p style={{ marginTop: '0.25rem' }}>{note.body}</p>
-            <small style={{ color: '#64748b', textTransform: 'capitalize' }}>{note.visibility}</small>
-          </div>
+            <p className="mt-3 rounded-xl bg-white/70 p-3 text-sm text-brand-navy">{note.body}</p>
+          </article>
         ))}
       </div>
     </div>

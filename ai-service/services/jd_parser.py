@@ -1,51 +1,16 @@
 from __future__ import annotations
 
+import json
+import logging
 import re
-from typing import Dict, List, Optional
+from typing import List, Optional, Tuple
 
 from core import get_embeddings_client, get_llm_client
 from models.job import JobDescriptionRequest, JobDescriptionResponse
+from services.skill_utils import extract_skills, normalize_skill_list
 from utils.settings import get_settings
 
-_SKILL_LIBRARY: Dict[str, str] = {
-  'python': 'Python',
-  'javascript': 'JavaScript',
-  'typescript': 'TypeScript',
-  'java': 'Java',
-  'c++': 'C++',
-  'c#': 'C#',
-  'go': 'Go',
-  'rust': 'Rust',
-  'sql': 'SQL',
-  'mongodb': 'MongoDB',
-  'postgresql': 'PostgreSQL',
-  'aws': 'AWS',
-  'gcp': 'GCP',
-  'azure': 'Azure',
-  'docker': 'Docker',
-  'kubernetes': 'Kubernetes',
-  'terraform': 'Terraform',
-  'react': 'React',
-  'vue': 'Vue',
-  'angular': 'Angular',
-  'node.js': 'Node.js',
-  'graphql': 'GraphQL',
-  'rest': 'REST',
-  'machine learning': 'Machine Learning',
-  'deep learning': 'Deep Learning',
-  'nlp': 'NLP',
-  'pandas': 'Pandas',
-  'numpy': 'NumPy',
-  'spark': 'Spark',
-  'hadoop': 'Hadoop',
-  'docker': 'Docker',
-  'kafka': 'Kafka',
-  'redis': 'Redis',
-  'elasticsearch': 'Elasticsearch',
-  'git': 'Git',
-  'linux': 'Linux',
-  'ci/cd': 'CI/CD'
-}
+logger = logging.getLogger(__name__)
 
 _PREFERRED_HINTS = ('preferred', 'nice to have', 'bonus', 'plus', 'optional')
 
@@ -80,7 +45,8 @@ class JobDescriptionParser:
     self._settings = get_settings()
     self._llm_client = get_llm_client()
     self._embeddings_client = get_embeddings_client()
-    self._use_llm = self._settings.ai_provider.lower() != 'mock'
+    provider = self._settings.ai_provider.lower().strip()
+    self._use_llm = provider != 'mock' and bool(self._settings.openai_api_key)
 
   def parse(self, payload: JobDescriptionRequest) -> JobDescriptionResponse:
     warnings: List[str] = []
@@ -88,13 +54,39 @@ class JobDescriptionParser:
     if not text:
       warnings.append('Job description text was empty.')
 
-    summary = self._generate_summary(payload.job_title, text, payload.location)
-    required_skills = self._extract_skills(text)
-    nice_to_have_skills, preferred_set = self._extract_preferred_skills(text)
-    required_skills = [skill for skill in required_skills if skill not in preferred_set]
-    seniority_level = self._detect_seniority(payload.job_title, text)
-    job_category = self._detect_category(payload.job_title, text)
-    embeddings = self._build_embeddings(payload.job_title, text, summary)
+    structured = None
+    if self._use_llm and text:
+      try:
+        structured = self._extract_structured_with_llm(payload.job_title, payload.location, text)
+      except Exception as exc:  # noqa: BLE001
+        warnings.append('LLM JD parsing unavailable, falling back to heuristics.')
+        logger.warning('LLM JD parsing failed: %s', exc)
+
+    summary = structured.get('summary') if structured else None
+    if not summary:
+      summary = self._generate_summary(payload.job_title, text, payload.location)
+
+    required_skills = normalize_skill_list(structured.get('required_skills', [])) if structured else []
+    if not required_skills:
+      required_skills = self._extract_skills(text)
+
+    nice_to_have_skills = normalize_skill_list(structured.get('nice_to_have_skills', [])) if structured else []
+    if not nice_to_have_skills:
+      nice_to_have_skills = self._extract_preferred_skills(text)[0]
+
+    # Remove overlap so we don't double-count
+    preferred_set = {skill.lower() for skill in nice_to_have_skills}
+    required_skills = [skill for skill in required_skills if skill.lower() not in preferred_set]
+
+    seniority_level = structured.get('seniority_level') if structured else None
+    if not seniority_level:
+      seniority_level = self._detect_seniority(payload.job_title, text)
+
+    job_category = structured.get('job_category') if structured else None
+    if not job_category:
+      job_category = self._detect_category(payload.job_title, text)
+
+    embeddings = self._build_embeddings(payload.job_title, text, summary or '')
 
     return JobDescriptionResponse(
       required_skills=required_skills,
@@ -125,19 +117,10 @@ class JobDescriptionParser:
       return f'{job_title} opportunity summary unavailable (LLM failed: {exc}).'
 
   def _extract_skills(self, text: str) -> List[str]:
-    normalized_lines = [line.lower() for line in text.splitlines()]
-    detected_map: Dict[str, int] = {}
+    return normalize_skill_list(extract_skills(text))
 
-    for line_index, line in enumerate(normalized_lines):
-      for key, canonical in _SKILL_LIBRARY.items():
-        if key in line and canonical not in detected_map:
-          detected_map[canonical] = line_index
-
-    sorted_entries = sorted(detected_map.items(), key=lambda kv: kv[1])
-    return [canonical for canonical, _ in sorted_entries]
-
-  def _extract_preferred_skills(self, text: str) -> tuple[List[str], set[str]]:
-    preferred: Dict[str, int] = {}
+  def _extract_preferred_skills(self, text: str) -> Tuple[List[str], set[str]]:
+    preferred = {}
     lines = text.splitlines()
     for idx, line in enumerate(lines):
       lower = line.lower()
@@ -145,12 +128,13 @@ class JobDescriptionParser:
         block = lower
         if idx + 1 < len(lines):
           block += ' ' + lines[idx + 1].lower()
-        for key, canonical in _SKILL_LIBRARY.items():
-          if key in block and canonical not in preferred:
-            preferred[canonical] = idx
+        for skill in extract_skills(block):
+          if skill not in preferred:
+            preferred[skill] = idx
+
     sorted_preferred = sorted(preferred.items(), key=lambda kv: kv[1])
-    preferred_list = [canonical for canonical, _ in sorted_preferred]
-    return preferred_list, set(preferred_list)
+    preferred_list = [skill for skill, _ in sorted_preferred]
+    return preferred_list, {skill.lower() for skill in preferred_list}
 
   def _detect_seniority(self, job_title: str, description: str) -> Optional[str]:
     job_lower = job_title.lower()
@@ -182,6 +166,34 @@ class JobDescriptionParser:
       return vectors[0] if vectors else []
     except Exception:  # noqa: BLE001
       return []
+
+  def _extract_structured_with_llm(self, title: str, location: Optional[str], description: str) -> dict:
+    prompt = (
+      "Extract structured details for this job description and respond with JSON containing the keys "
+      "`summary` (string), `required_skills` (array of strings), `nice_to_have_skills` (array of strings), "
+      "`seniority_level` (string), and `job_category` (string). Normalize skill casing, keep arrays small (<10), "
+      "and prefer concise summaries.\n"
+      f"Job title: {title}\n"
+      f"Location: {location or 'unspecified'}\n"
+      f"Description:\n{description[:6000]}"
+    )
+    raw = self._llm_client.run(prompt, temperature=0.1, system_prompt='You convert job descriptions into JSON.')
+    return self._parse_json_response(raw)
+
+  def _parse_json_response(self, content: str) -> dict:
+    sanitized = content.strip()
+    if '```' in sanitized:
+      sanitized = sanitized.split('```', 1)[1]
+      sanitized = sanitized.split('```', 1)[0]
+    sanitized = sanitized.strip()
+    try:
+      data = json.loads(sanitized)
+    except json.JSONDecodeError:
+      logger.warning('JD LLM response was not valid JSON.')
+      raise
+    if not isinstance(data, dict):
+      raise ValueError('JD LLM response must be a JSON object.')
+    return data
 
 
 def parse_job_description(payload: JobDescriptionRequest) -> JobDescriptionResponse:

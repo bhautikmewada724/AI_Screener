@@ -16,7 +16,31 @@ const recommendedJobSchema = new Schema(
       default: 0
     },
     rank: Number,
-    reason: String
+    reason: String,
+    status: {
+      type: String,
+      enum: ['shown', 'saved', 'dismissed', 'applied'],
+      default: 'shown'
+    },
+    feedbackReason: {
+      type: String
+    },
+    jobSnapshot: {
+      title: String,
+      location: String,
+      requiredSkills: {
+        type: [String],
+        default: []
+      },
+      niceToHaveSkills: {
+        type: [String],
+        default: []
+      }
+    },
+    lastRecommendedAt: {
+      type: Date,
+      default: Date.now
+    }
   },
   { _id: false }
 );

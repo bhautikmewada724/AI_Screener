@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import math
 from abc import ABC, abstractmethod
 from functools import lru_cache
@@ -12,6 +13,8 @@ except ImportError:  # pragma: no cover - optional dependency
   OpenAI = None  # type: ignore
 
 from utils.settings import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingsClient(ABC):
@@ -44,22 +47,28 @@ class MockEmbeddingsClient(EmbeddingsClient):
 class OpenAIEmbeddingsClient(EmbeddingsClient):
   """Wrapper around OpenAI's embedding API."""
 
-  def __init__(self, api_key: str, model: str) -> None:
+  def __init__(self, api_key: str, model: str, *, timeout: float) -> None:
     if not OpenAI:
       raise RuntimeError('openai package is not installed. Install optional dependencies to enable providers.')
 
     self._client = OpenAI(api_key=api_key)
     self._model: Final[str] = model
+    self._timeout: Final[float] = timeout
 
   def embed(self, texts: Iterable[str]) -> list[list[float]]:
     text_list = list(texts)
     if not text_list:
       return []
 
-    response = self._client.embeddings.create(
-      model=self._model,
-      input=text_list
-    )
+    try:
+      response = self._client.embeddings.create(
+        model=self._model,
+        input=text_list,
+        timeout=self._timeout
+      )
+    except Exception as exc:  # noqa: BLE001
+      logger.warning('Embedding generation failed: %s', exc)
+      return []
 
     return [datum.embedding for datum in response.data]
 
@@ -83,15 +92,22 @@ def get_embeddings_client() -> EmbeddingsClient:
   """Return the configured embeddings provider."""
 
   settings = get_settings()
-  provider = settings.ai_provider.lower()
+  provider = settings.ai_provider.lower().strip()
 
   if provider == 'openai':
     if not settings.openai_api_key:
-      raise RuntimeError('OPENAI_API_KEY is required when AI_PROVIDER=openai')
-    return OpenAIEmbeddingsClient(
-      api_key=settings.openai_api_key,
-      model=settings.embedding_model_name
-    )
+      logger.warning('OPENAI_API_KEY is missing; falling back to mock embeddings client.')
+    elif not OpenAI:
+      logger.warning('openai package unavailable; falling back to mock embeddings client.')
+    else:
+      return OpenAIEmbeddingsClient(
+        api_key=settings.openai_api_key,
+        model=settings.embedding_model_name,
+        timeout=settings.embedding_timeout
+      )
+
+  if provider != 'mock':
+    logger.warning('Unknown AI_PROVIDER "%s"; defaulting to mock embeddings client.', provider)
 
   return MockEmbeddingsClient()
 

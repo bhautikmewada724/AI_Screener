@@ -1,5 +1,5 @@
 from models.resume import ResumeParseRequest
-from services.resume_parser import parse_resume
+from services.resume_parser import ResumeParser, parse_resume
 
 SAMPLE_RESUME = """
 Jane Doe
@@ -44,4 +44,26 @@ def test_parse_resume_from_file(tmp_path):
   assert result.summary != 'Unable to extract resume content.'
   assert 'fastapi' in {skill.lower() for skill in result.skills}
   assert result.education, 'education section should be detected'
+
+
+def test_parse_resume_handles_llm_failure(monkeypatch):
+  parser = ResumeParser()
+  parser._use_llm = True  # force LLM path
+
+  def _boom(*args, **kwargs):  # noqa: ANN001, D401
+    raise RuntimeError('LLM offline')
+
+  monkeypatch.setattr(ResumeParser, '_extract_structured_with_llm', _boom, raising=True)
+
+  payload = ResumeParseRequest(
+    file_path='',
+    file_name='resume.pdf',
+    user_id='user-789',
+    resume_text=SAMPLE_RESUME
+  )
+
+  result = parser.parse(payload)
+
+  assert result.skills, 'skills should still be extracted'
+  assert result.warnings, 'warnings should mention fallback'
 

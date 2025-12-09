@@ -82,3 +82,24 @@ def extract_skills(text: str, max_results: int | None = None) -> List[str]:
     return ordered[:max_results]
   return ordered
 
+
+def normalize_skill_list(skills: List[str]) -> List[str]:
+  """Deduplicate and consistently format arbitrary skill strings."""
+
+  normalized: List[str] = []
+  seen = set()
+
+  for skill in skills:
+    if not skill:
+      continue
+    cleaned = re.sub(r'\s+', ' ', skill).strip()
+    if not cleaned:
+      continue
+    key = cleaned.lower()
+    if key in seen:
+      continue
+    seen.add(key)
+    normalized.append(cleaned)
+
+  return normalized
+

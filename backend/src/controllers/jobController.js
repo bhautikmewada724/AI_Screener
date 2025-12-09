@@ -297,3 +297,67 @@ export const getJobMatches = async (req, res, next) => {
   }
 };
 
+export const listPublicJobs = async (req, res, next) => {
+  try {
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const search = (req.query.search || '').trim();
+    const location = (req.query.location || '').trim();
+
+    const query = { status: 'open' };
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { tags: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (location) {
+      query.location = { $regex: location, $options: 'i' };
+    }
+
+    const projection =
+      'title description location employmentType tags requiredSkills niceToHaveSkills metadata status createdAt updatedAt';
+
+    const [jobs, total] = await Promise.all([
+      JobDescription.find(query)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .select(projection),
+      JobDescription.countDocuments(query)
+    ]);
+
+    return res.json({
+      data: jobs,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getPublicJobById = async (req, res, next) => {
+  try {
+    const job = await JobDescription.findOne({
+      _id: req.params.jobId,
+      status: 'open'
+    }).select(
+      'title description location employmentType tags requiredSkills niceToHaveSkills metadata status createdAt updatedAt'
+    );
+
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found.' });
+    }
+
+    return res.json(job);
+  } catch (error) {
+    next(error);
+  }
+};
+

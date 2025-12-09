@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 
 import HrLayout from './layouts/HrLayout';
 import AdminLayout from './layouts/AdminLayout';
+import CandidateLayout from './layouts/CandidateLayout';
 import LoginPage from './pages/LoginPage';
 import HrDashboardPage from './pages/HrDashboardPage';
 import JobDetailPage from './pages/JobDetailPage';
@@ -11,6 +12,12 @@ import AdminUsersPage from './pages/AdminUsersPage';
 import AdminUserDetailPage from './pages/AdminUserDetailPage';
 import AdminJobsPage from './pages/AdminJobsPage';
 import AdminJobFormPage from './pages/AdminJobFormPage';
+import CandidateDashboardPage from './pages/candidate/CandidateDashboardPage';
+import CandidateResumesPage from './pages/candidate/CandidateResumesPage';
+import CandidateJobsPage from './pages/candidate/CandidateJobsPage';
+import CandidateJobDetailPage from './pages/candidate/CandidateJobDetailPage';
+import CandidateApplicationsPage from './pages/candidate/CandidateApplicationsPage';
+import CandidateRecommendationsPage from './pages/candidate/CandidateRecommendationsPage';
 import { useAuth } from './hooks/useAuth';
 
 interface ProtectedRouteProps {
@@ -46,6 +53,20 @@ const App = () => {
       <Route path="/login" element={<LoginPage />} />
       <Route
         element={
+          <ProtectedRoute roles={['candidate']}>
+            <CandidateLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/candidate/dashboard" element={<CandidateDashboardPage />} />
+        <Route path="/candidate/resumes" element={<CandidateResumesPage />} />
+        <Route path="/candidate/recommendations" element={<CandidateRecommendationsPage />} />
+        <Route path="/candidate/jobs" element={<CandidateJobsPage />} />
+        <Route path="/candidate/jobs/:jobId" element={<CandidateJobDetailPage />} />
+        <Route path="/candidate/applications" element={<CandidateApplicationsPage />} />
+      </Route>
+      <Route
+        element={
           <ProtectedRoute roles={['hr', 'admin']}>
             <HrLayout />
           </ProtectedRoute>
@@ -68,7 +89,7 @@ const App = () => {
         <Route path="/admin/jobs/new" element={<AdminJobFormPage />} />
         <Route path="/admin/jobs/:jobId/edit" element={<AdminJobFormPage />} />
       </Route>
-      <Route path="*" element={<Navigate to="/hr/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 };

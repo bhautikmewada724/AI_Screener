@@ -17,21 +17,24 @@ export interface SalaryRange {
   currency?: string;
 }
 
-export interface JobDescription {
+export interface JobSummary {
   _id: string;
   title: string;
-  description: string;
-  status: 'draft' | 'open' | 'on_hold' | 'closed' | 'archived';
   location?: string;
+  requiredSkills?: string[];
+  niceToHaveSkills?: string[];
+  status?: 'draft' | 'open' | 'on_hold' | 'closed' | 'archived';
+  tags?: string[];
+  metadata?: JobMetadata;
+}
+
+export interface JobDescription extends JobSummary {
+  description: string;
   employmentType?: string;
   salaryRange?: SalaryRange;
-  requiredSkills?: string[];
-   niceToHaveSkills?: string[];
   openings?: number;
-  tags?: string[];
   reviewStages?: string[];
   hrId?: string;
-  metadata?: JobMetadata;
   createdAt: string;
 }
 
@@ -54,6 +57,7 @@ export interface ResumePayload {
   _id: string;
   status: string;
   originalFileName?: string;
+  createdAt?: string;
   parsedData?: {
     summary?: string;
     skills?: string[];
@@ -62,6 +66,7 @@ export interface ResumePayload {
     location?: string;
     warnings?: string[];
     embeddings?: number[];
+    error?: string;
   };
 }
 
@@ -74,7 +79,7 @@ export interface CandidateProfile {
 
 export interface ApplicationRecord {
   _id: string;
-  jobId: string;
+  jobId: string | JobDescription;
   candidateId: CandidateProfile;
   resumeId: ResumePayload;
   status: 'applied' | 'in_review' | 'shortlisted' | 'rejected' | 'hired';
@@ -114,6 +119,30 @@ export interface AuditEventRecord {
   action: string;
   context?: Record<string, unknown>;
   createdAt: string;
+}
+
+export interface RecommendedJob {
+  jobId: string;
+  score: number;
+  rank: number;
+  reason?: string;
+  status: 'shown' | 'saved' | 'dismissed' | 'applied';
+  feedbackReason?: string;
+  job?: JobSummary;
+  jobSnapshot?: {
+    title?: string;
+    location?: string;
+    requiredSkills?: string[];
+    niceToHaveSkills?: string[];
+  };
+  lastRecommendedAt?: string;
+}
+
+export interface Recommendation {
+  id?: string;
+  candidateId?: string;
+  generatedAt?: string;
+  recommendedJobs: RecommendedJob[];
 }
 
 export interface PaginatedResponse<T> {

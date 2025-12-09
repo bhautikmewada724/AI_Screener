@@ -11,10 +11,12 @@ import authRouter from './routes/authRoutes.js';
 import aiRouter from './routes/aiRoutes.js';
 import resumeRouter from './routes/resumeRoutes.js';
 import jobRouter from './routes/jobRoutes.js';
+import publicJobRouter from './routes/publicJobRoutes.js';
 import hrWorkflowRouter from './routes/hrWorkflowRoutes.js';
 import applicationRouter from './routes/applicationRoutes.js';
 import adminRouter from './routes/adminRoutes.js';
 import matchingRouter from './routes/matchingRoutes.js';
+import recommendationRouter from './routes/recommendationRoutes.js';
 import buildSwaggerSpec from './swagger.js';
 
 dotenv.config();
@@ -33,11 +35,13 @@ app.use('/', healthRouter);
 app.use('/auth', authRouter);
 app.use('/ai', aiRouter);
 app.use('/resume', resumeRouter);
+app.use('/jobs', publicJobRouter);
 app.use('/applications', applicationRouter);
 app.use('/hr', jobRouter);
 app.use('/hr', hrWorkflowRouter);
 app.use('/admin', adminRouter);
 app.use('/matching', matchingRouter);
+app.use('/', recommendationRouter);
 
 // Swagger docs
 const serverUrl = process.env.API_BASE_URL || `http://localhost:${PORT}`;

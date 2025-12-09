@@ -19,8 +19,10 @@ const LoginPage = () => {
       const loggedInUser = await login(email, password);
       if (loggedInUser.role === 'admin') {
         navigate('/admin/overview');
-      } else {
+      } else if (loggedInUser.role === 'hr') {
         navigate('/hr/dashboard');
+      } else {
+        navigate('/candidate/dashboard');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');

@@ -62,7 +62,7 @@
   }
 
   .page-shell {
-    @apply space-y-8;
+    @apply mx-auto flex w-full max-w-6xl flex-col gap-8 px-1 lg:mx-0;
   }
 
   .page-header {
@@ -79,7 +79,15 @@
 
   /* Cards & surfaces */
   .card {
-    @apply rounded-2xl bg-white p-6 shadow-card-lg ring-1 ring-slate-100;
+    @apply w-full rounded-2xl bg-white p-6 shadow-card-lg ring-1 ring-slate-100;
+  }
+
+  .shadow-card-lg {
+    @apply shadow-xl shadow-slate-900/5;
+  }
+
+  .shadow-card-sm {
+    @apply shadow-md shadow-slate-900/5;
   }
 
   .section-card {
@@ -181,5 +189,9 @@
 
   .error-state {
     @apply text-rose-600;
+  }
+
+  .skeleton {
+    @apply animate-pulse rounded-2xl bg-slate-200/70;
   }
 }
