@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { fetchMyResumes, uploadCandidateResume } from '../../api/candidate';
 import { useAuth } from '../../hooks/useAuth';
+import { ApiError } from '../../api/client';
 import PageHeader from '../../components/ui/PageHeader';
 import SectionCard from '../../components/ui/SectionCard';
 import ErrorState from '../../components/ui/ErrorState';
@@ -28,7 +29,11 @@ const CandidateResumesPage = () => {
       setUploadError(null);
     },
     onError: (error: Error) => {
-      setUploadError(error.message);
+      if (error instanceof ApiError) {
+        setUploadError(error.message);
+      } else {
+        setUploadError('Failed to upload resume. Please try again.');
+      }
     }
   });
 

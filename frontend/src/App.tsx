@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 
 import HrLayout from './layouts/HrLayout';
@@ -19,6 +19,7 @@ import CandidateJobDetailPage from './pages/candidate/CandidateJobDetailPage';
 import CandidateApplicationsPage from './pages/candidate/CandidateApplicationsPage';
 import CandidateRecommendationsPage from './pages/candidate/CandidateRecommendationsPage';
 import { useAuth } from './hooks/useAuth';
+import NotAuthorized from './components/ui/NotAuthorized';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -26,7 +27,8 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
-  const { isAuthenticated, user, isBootstrapping } = useAuth();
+  const { isAuthenticated, user, isBootstrapping, lastAuthError } = useAuth();
+  const location = useLocation();
 
   if (isBootstrapping) {
     return (
@@ -37,11 +39,11 @@ const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location.pathname, message: lastAuthError || 'Please sign in.' }} replace />;
   }
 
   if (roles && user && !roles.includes(user.role)) {
-    return <Navigate to="/login" replace />;
+    return <NotAuthorized />;
   }
 
   return <>{children}</>;

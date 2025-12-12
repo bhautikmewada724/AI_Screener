@@ -9,6 +9,7 @@ interface AuthState {
   token?: string;
   isAuthenticated: boolean;
   isBootstrapping: boolean;
+  lastAuthError?: string | null;
   login: (email: string, password: string) => Promise<UserProfile>;
   logout: () => void;
   refreshCurrentUser: () => Promise<void>;
@@ -35,6 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | undefined>();
   const [user, setUser] = useState<UserProfile | undefined>();
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [lastAuthError, setLastAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -67,6 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setToken(response.token);
       setUser(response.user);
+      setLastAuthError(null);
       persist({ token: response.token, user: response.user });
       return response.user;
     },
@@ -76,6 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = useCallback(() => {
     setToken(undefined);
     setUser(undefined);
+    setLastAuthError(null);
     persist(undefined);
   }, [persist]);
 
@@ -84,8 +88,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const response = await apiRequest<{ user: UserProfile }>('/auth/me', { token });
       setUser(response.user);
+      setLastAuthError(null);
       persist({ token, user: response.user });
     } catch {
+      setLastAuthError('Session expired. Please sign in again.');
       logout();
     }
   }, [logout, persist, token]);
@@ -98,9 +104,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       logout,
       refreshCurrentUser,
       isAuthenticated: Boolean(user && token),
-      isBootstrapping
+      isBootstrapping,
+      lastAuthError
     }),
-    [isBootstrapping, login, logout, refreshCurrentUser, token, user]
+    [isBootstrapping, lastAuthError, login, logout, refreshCurrentUser, token, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

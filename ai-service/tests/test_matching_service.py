@@ -1,5 +1,6 @@
 from models.match import MatchRequest
 from services.matching_service import score_match
+from utils import embeddings_client
 
 
 def test_score_match_high_overlap():
@@ -46,4 +47,24 @@ def test_score_match_includes_component_explanations():
   assert response.explanation['components']['experience']['years'] >= 7
   assert response.explanation['components']['location']['match']
   assert response.embedding_similarity >= 0
+
+
+def test_score_match_handles_embedding_failures(monkeypatch):
+  class FailingClient(embeddings_client.EmbeddingsClient):
+    def embed(self, texts):  # noqa: ARG002
+      raise RuntimeError('boom')
+
+  monkeypatch.setattr(embeddings_client, 'get_embeddings_client', lambda: FailingClient())
+
+  payload = MatchRequest(
+    resume_skills=['Python'],
+    job_required_skills=['Python'],
+    resume_summary='',
+    job_summary=''
+  )
+
+  response = score_match(payload)
+
+  assert response.embedding_similarity == 0
+  assert response.match_score >= 0  # still returns a response without raising
 

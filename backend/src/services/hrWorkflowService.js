@@ -169,7 +169,7 @@ export const refreshApplicationMatch = async (application) => {
   return { application, matchResult };
 };
 
-export const recordAuditEvent = async ({ applicationId, actorId, action, context = {} }) => {
+export const recordAuditEvent = async ({ applicationId, actorId, action, context = {}, orgId }) => {
   return AuditEvent.create({
     applicationId,
     actorId,
@@ -197,7 +197,7 @@ export const createReviewNote = async ({ applicationId, authorId, body, visibili
   return note;
 };
 
-export const buildQueueQuery = ({ jobId, status }) => {
+export const buildQueueQuery = ({ jobId, status, orgId }) => {
   const query = { jobId };
   if (status) {
     query.status = status;

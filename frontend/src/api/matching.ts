@@ -9,7 +9,7 @@ export const fetchJobMatches = (
   const path = withQuery(`/matching/jobs/${jobId}`, {
     minScore: options?.minScore,
     limit: options?.limit,
-    refresh: options?.refresh
+    refresh: options?.refresh ? 'true' : undefined
   });
   return apiRequest<{
     data: Array<{

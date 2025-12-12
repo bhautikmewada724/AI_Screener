@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
 import User from '../models/User.js';
-import { ALLOWED_ROLES, ROLES } from '../utils/roles.js';
+import { ROLES } from '../utils/roles.js';
 
 const SALT_ROUNDS = 10;
 const TOKEN_TTL = process.env.JWT_EXPIRES_IN || '1h';
@@ -34,9 +34,12 @@ const sanitizeUser = (user) => ({
   updatedAt: user.updatedAt
 });
 
+// Public registration always provisions the least-privileged role.
+export const resolveRegistrationRole = (_requestedRole) => ROLES.CANDIDATE;
+
 export const register = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email, and password are required.' });
@@ -47,7 +50,7 @@ export const register = async (req, res, next) => {
       return res.status(409).json({ message: 'Email is already registered.' });
     }
 
-    const normalizedRole = ALLOWED_ROLES.includes(role) ? role : ROLES.CANDIDATE;
+    const normalizedRole = resolveRegistrationRole(req.body?.role);
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
     const user = await User.create({

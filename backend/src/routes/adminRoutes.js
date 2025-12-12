@@ -1,8 +1,10 @@
 import { Router } from 'express';
 
 import {
+  createUserController,
   getSystemOverviewController,
   getUserController,
+  getUserAuditTrailController,
   listUsersController,
   updateUserRoleController,
   updateUserStatusController
@@ -51,6 +53,42 @@ const adminGuard = [authenticate, authorizeRoles(ROLES.ADMIN)];
  *         description: Paginated user list.
  */
 router.get('/users', adminGuard, listUsersController);
+/**
+ * @openapi
+ * /admin/users:
+ *   post:
+ *     tags:
+ *       - Admin
+ *     summary: Create a new user (HR/Admin/Candidate) as an admin-only action.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [admin, hr, candidate]
+ *                 description: Defaults to candidate when omitted.
+ *     responses:
+ *       201:
+ *         description: User created successfully.
+ */
+router.post('/users', adminGuard, createUserController);
 
 /**
  * @openapi
@@ -72,6 +110,7 @@ router.get('/users', adminGuard, listUsersController);
  *         description: User document.
  */
 router.get('/users/:userId', adminGuard, getUserController);
+router.get('/users/:userId/audit', adminGuard, getUserAuditTrailController);
 
 /**
  * @openapi

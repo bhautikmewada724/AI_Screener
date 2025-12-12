@@ -1,12 +1,21 @@
 import Resume from '../models/Resume.js';
 import { parseResume as parseResumeAI } from '../services/aiService.js';
 import { transformAiResumeToParsedData } from '../services/aiTransformers.js';
+import { validateResumeFile } from '../config/multer.js';
+import { scanFileForThreats } from '../utils/avScan.js';
 
 export const uploadResume = async (req, res, next) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'Resume file is required.' });
     }
+
+    const validation = validateResumeFile(req.file);
+    if (!validation.ok) {
+      return res.status(400).json({ message: validation.message });
+    }
+
+    await scanFileForThreats(req.file.path);
 
     const resume = await Resume.create({
       userId: req.user.id,

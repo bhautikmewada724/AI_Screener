@@ -3,16 +3,21 @@ import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { AppShell } from './AppShell';
 import { adminNavItems } from './navItems';
+import NotAuthorized from '../components/ui/NotAuthorized';
 
 const AdminLayout = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated, isBootstrapping, lastAuthError } = useAuth();
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
+  if (isBootstrapping) {
+    return null;
+  }
+
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" state={{ message: lastAuthError || 'Please sign in.' }} replace />;
   }
 
   if (user.role !== 'admin') {
-    return <Navigate to="/" replace />;
+    return <NotAuthorized message="Admins only. Please contact an administrator if you need access." />;
   }
 
   return (

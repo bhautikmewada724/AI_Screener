@@ -1,7 +1,9 @@
 import {
+  createUser,
   getSystemOverview,
   getUserById,
   listUsers,
+  getUserAuditEvents,
   updateUserRole,
   updateUserStatus
 } from '../services/adminService.js';
@@ -22,10 +24,43 @@ export const listUsersController = async (req, res, next) => {
   }
 };
 
+export const createUserController = async (req, res, next) => {
+  try {
+    const { name, email, password, role } = req.body || {};
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Name, email, and password are required.' });
+    }
+
+    const user = await createUser({
+      name,
+      email,
+      password,
+      role,
+      actorId: req.user.id
+    });
+
+    res.status(201).json({ user });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getUserController = async (req, res, next) => {
   try {
     const user = await getUserById(req.params.userId);
     res.json({ user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserAuditTrailController = async (req, res, next) => {
+  try {
+    const events = await getUserAuditEvents({
+      targetUserId: req.params.userId,
+      limit: req.query.limit
+    });
+    res.json({ events });
   } catch (error) {
     next(error);
   }

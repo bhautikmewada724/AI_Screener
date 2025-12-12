@@ -76,6 +76,7 @@ const jobDescriptionSchema = new Schema(
 );
 
 jobDescriptionSchema.index({ title: 1 });
+jobDescriptionSchema.index({ createdAt: -1 });
 
 const JobDescription =
   mongoose.models.JobDescription || mongoose.model('JobDescription', jobDescriptionSchema);

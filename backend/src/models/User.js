@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { ALLOWED_ROLES, ROLES } from '../utils/roles.js';
+import { ALLOWED_USER_STATUSES, DEFAULT_USER_STATUS } from '../utils/userStatus.js';
 
 const userSchema = new mongoose.Schema(
   {
@@ -27,8 +28,8 @@ const userSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['active', 'inactive', 'banned'],
-      default: 'active',
+      enum: ALLOWED_USER_STATUSES,
+      default: DEFAULT_USER_STATUS,
       index: true
     },
     lastLoginAt: {
@@ -39,6 +40,7 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.index({ email: 1 });
+userSchema.index({ createdAt: -1 });
 
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 

@@ -12,6 +12,11 @@ const auditEventSchema = new Schema(
       ref: 'Application',
       index: true
     },
+    targetUserId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      index: true
+    },
     actorId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
@@ -20,6 +25,16 @@ const auditEventSchema = new Schema(
     action: {
       type: String,
       required: true
+    },
+    before: {
+      type: Map,
+      of: Schema.Types.Mixed,
+      default: undefined
+    },
+    after: {
+      type: Map,
+      of: Schema.Types.Mixed,
+      default: undefined
     },
     context: {
       type: Map,
@@ -34,6 +49,7 @@ const auditEventSchema = new Schema(
 );
 
 auditEventSchema.index({ actorId: 1, createdAt: -1 });
+auditEventSchema.index({ targetUserId: 1, createdAt: -1 });
 
 const AuditEvent =
   mongoose.models.AuditEvent || mongoose.model('AuditEvent', auditEventSchema);

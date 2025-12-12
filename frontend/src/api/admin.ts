@@ -1,5 +1,5 @@
 import { apiRequest, withQuery } from './client';
-import type { PaginatedResponse, UserProfile } from '../types/api';
+import type { PaginatedResponse, UserAuditEvent, UserProfile } from '../types/api';
 
 interface ListUsersParams {
   page?: number;
@@ -20,8 +20,24 @@ export const listUsers = (params: ListUsersParams, token?: string) => {
   return apiRequest<PaginatedResponse<UserProfile>>(path, { token });
 };
 
+export const createUser = (
+  payload: { name: string; email: string; password: string; role?: string },
+  token?: string
+) => {
+  return apiRequest<{ user: UserProfile }>('/admin/users', {
+    method: 'POST',
+    token,
+    body: JSON.stringify(payload)
+  });
+};
+
 export const getUserById = (userId: string, token?: string) => {
   return apiRequest<{ user: UserProfile }>(`/admin/users/${userId}`, { token });
+};
+
+export const getUserAuditTrail = (userId: string, token?: string, limit = 20) => {
+  const path = withQuery(`/admin/users/${userId}/audit`, { limit });
+  return apiRequest<{ events: UserAuditEvent[] }>(path, { token });
 };
 
 export const updateUserRole = (userId: string, role: string, token?: string) => {
@@ -42,9 +58,15 @@ export const updateUserStatus = (userId: string, status: string, token?: string)
 
 export const fetchSystemOverview = (token?: string) => {
   return apiRequest<{
-    users: { total: number; byRole: Record<string, number>; byStatus: Record<string, number> };
-    jobs: { total: number; byStatus: Record<string, number> };
-    applications: { total: number; byStatus: Record<string, number> };
+    users: {
+      total: number;
+      byRole: Record<string, number>;
+      byStatus: Record<string, number>;
+      createdLast7Days?: number;
+    };
+    jobs: { total: number; byStatus: Record<string, number>; createdLast30Days?: number };
+    applications: { total: number; byStatus: Record<string, number>; createdLast30Days?: number };
+    health?: { lastAuditEventAt: string | null };
   }>('/admin/stats/overview', { token });
 };
 

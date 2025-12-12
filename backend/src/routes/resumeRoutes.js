@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { authenticate, authorizeRoles } from '../middlewares/authMiddleware.js';
 import { uploadResume, getResumeById, getMyResumes } from '../controllers/resumeController.js';
 import { resumeUpload } from '../config/multer.js';
+import { resumeUploadLimiter } from '../middlewares/rateLimiters.js';
 
 const router = Router();
 
@@ -36,6 +37,7 @@ const router = Router();
  */
 router.post(
   '/upload',
+  resumeUploadLimiter,
   authenticate,
   authorizeRoles('candidate'),
   resumeUpload.single('file'),

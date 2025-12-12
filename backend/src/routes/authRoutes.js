@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { adminOnlyPing, getCurrentUser, login, register } from '../controllers/authController.js';
 import { authenticate, authorizeRoles } from '../middlewares/authMiddleware.js';
 import { ROLES } from '../utils/roles.js';
+import { loginLimiter, registerLimiter } from '../middlewares/rateLimiters.js';
 
 const router = Router();
 
@@ -31,10 +32,7 @@ const router = Router();
  *                 format: email
  *               password:
  *                 type: string
- *               role:
- *                 type: string
- *                 enum: [admin, hr, candidate]
- *                 description: Defaults to candidate if omitted.
+ *             description: All public registrations are created as candidates.
  *     responses:
  *       201:
  *         description: User created successfully.
@@ -43,7 +41,7 @@ const router = Router();
  *       409:
  *         description: Email already registered.
  */
-router.post('/register', register);
+router.post('/register', registerLimiter, register);
 
 /**
  * @openapi
@@ -73,7 +71,7 @@ router.post('/register', register);
  *       401:
  *         description: Invalid credentials.
  */
-router.post('/login', login);
+router.post('/login', loginLimiter, login);
 
 /**
  * @openapi

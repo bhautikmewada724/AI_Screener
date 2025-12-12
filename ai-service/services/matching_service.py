@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import logging
 import re
 from typing import List, Optional, Tuple
 
-from core import get_embeddings_client
-from core.embeddings_client import cosine_similarity
+import logging
+
+from utils.embeddings_client import get_embeddings_client, cosine_similarity
 from models.match import MatchRequest, MatchResponse
+
+logger = logging.getLogger(__name__)
 
 SKILL_WEIGHT = 0.4
 EMBEDDING_WEIGHT = 0.3
@@ -39,7 +43,12 @@ def _embedding_similarity(payload: MatchRequest) -> float:
     return 0.0
 
   embeddings_client = get_embeddings_client()
-  vectors = embeddings_client.embed([resume_text, job_text])
+  try:
+    vectors = embeddings_client.embed([resume_text, job_text])
+  except Exception as exc:  # noqa: BLE001
+    logger.warning('Embedding similarity failed: %s', exc)
+    return 0.0
+
   if len(vectors) != 2:
     return 0.0
 

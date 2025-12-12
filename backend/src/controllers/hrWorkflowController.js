@@ -11,11 +11,11 @@ import {
   recordAuditEvent,
   refreshApplicationMatch
 } from '../services/hrWorkflowService.js';
+import { assertValidTransition, APPLICATION_STATUSES } from '../services/applicationStatusRules.js';
 
 /**
  * HR-specific workflow endpoints: queues, scoring, comments, and audit trail.
  */
-const APPLICATION_STATUSES = ['applied', 'in_review', 'shortlisted', 'rejected', 'hired'];
 
 export const getJobReviewQueue = async (req, res, next) => {
   try {
@@ -63,12 +63,18 @@ export const getApplicationDetails = async (req, res, next) => {
 export const updateApplicationStatus = async (req, res, next) => {
   try {
     const { status, reviewStage, decisionReason } = req.body || {};
-    if (!status || !APPLICATION_STATUSES.includes(status)) {
-      return res.status(400).json({ message: 'Invalid status provided.' });
+    if (!status) {
+      return res.status(400).json({ message: 'Status is required.' });
     }
 
     const { application, job } = await fetchApplicationWithJob(req.params.applicationId, req.user);
     const previousStatus = application.status;
+
+    try {
+      assertValidTransition(previousStatus, status);
+    } catch (error) {
+      return res.status(error.status || 400).json({ message: error.message });
+    }
 
     application.status = status;
 
@@ -90,6 +96,8 @@ export const updateApplicationStatus = async (req, res, next) => {
         jobId: job._id,
         previousStatus,
         newStatus: status,
+        actorRole: req.user.role,
+        applicationId: application._id,
         reviewStage: reviewStage || application.reviewStage
       }
     });

@@ -11,9 +11,9 @@ const router = express.Router();
 
 router.use(authenticate, authorizeRoles('candidate'));
 
-router.get('/candidate/recommendations', getCandidateRecommendations);
-router.post('/candidate/recommendations/refresh', refreshCandidateRecommendations);
-router.post('/candidate/recommendations/feedback', submitRecommendationFeedback);
+router.get('/recommendations', getCandidateRecommendations);
+router.post('/recommendations/refresh', refreshCandidateRecommendations);
+router.post('/recommendations/feedback', submitRecommendationFeedback);
 
 export default router;
 

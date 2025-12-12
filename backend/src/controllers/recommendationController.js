@@ -78,8 +78,17 @@ export const refreshCandidateRecommendations = async (req, res, next) => {
 export const submitRecommendationFeedback = async (req, res, next) => {
   try {
     const { jobId, feedbackType, feedbackReason } = req.body || {};
+    const validTypes = ['dismissed', 'saved'];
+    const isValidObjectId = typeof jobId === 'string' && /^[a-fA-F0-9]{24}$/.test(jobId);
+
     if (!jobId || !feedbackType) {
       return res.status(400).json({ message: 'jobId and feedbackType are required.' });
+    }
+    if (!isValidObjectId) {
+      return res.status(400).json({ message: 'jobId must be a valid object id.' });
+    }
+    if (!validTypes.includes(feedbackType)) {
+      return res.status(400).json({ message: 'feedbackType must be one of dismissed|saved.' });
     }
 
     const updated = await applyRecommendationFeedback(req.user.id, {

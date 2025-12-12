@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { listUsers } from '../api/admin';
 import { createJob, getJobById, updateJob } from '../api/jobs';
 import { useAuth } from '../hooks/useAuth';
+import { JOB_STATUSES } from '../constants/jobs';
 import type { JobDescription, UserProfile } from '../types/api';
 
 interface JobFormState {
@@ -200,11 +201,11 @@ const AdminJobFormPage = () => {
             <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
               Status
               <select name="status" value={formState.status} onChange={handleChange} className={selectClasses}>
-                <option value="draft">Draft</option>
-                <option value="open">Open</option>
-                <option value="on_hold">On hold</option>
-                <option value="closed">Closed</option>
-                <option value="archived">Archived</option>
+                {JOB_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {status.replace('_', ' ')}
+                  </option>
+                ))}
               </select>
             </label>
           </div>

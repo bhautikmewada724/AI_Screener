@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List, Optional, Tuple
 
-from core.embeddings_client import cosine_similarity
+from utils.embeddings_client import cosine_similarity
 from models.recommendation import (
   CandidateProfile,
   JobRecommendationInput,

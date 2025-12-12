@@ -7,7 +7,7 @@ This document summarizes the MongoDB collections that now back the AI Screener p
 ### `users`
 - Already defined in Phase 2.
 - Roles: `admin`, `hr`, `candidate`.
-- Status field: `active | inactive | banned` (defaults to `active`) enables admin account controls.
+- Status field: **canonical** `active | inactive | banned` (defaults to `active`) enables admin account controls. Defined in `backend/src/utils/userStatus.js` and shared by the model and services.
 - Tracks `lastLoginAt` for admin auditing.
 
 ### `resumes`
@@ -68,8 +68,8 @@ This document summarizes the MongoDB collections that now back the AI Screener p
 ### `audit_events`
 - Model: `AuditEvent`
 - Immutable append-only record of workflow actions (status changes, comments, score refresh, submissions).
-- Fields: `applicationId`, `actorId`, `action`, `context` (arbitrary key/value map).
-- Indexed by `applicationId`; includes timestamps for chronological timelines.
+- Fields: `applicationId`, `actorId`, `targetUserId`, `action`, `before`, `after`, `context` (arbitrary key/value map).
+- Indexed by `applicationId` and `targetUserId` (plus `createdAt`) for quick user/audit lookups; includes timestamps for chronological timelines.
 
 ## Sanity Script
 

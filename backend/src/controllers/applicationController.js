@@ -16,7 +16,7 @@ export const applyToJob = async (req, res, next) => {
 
     const [job, resume, existingApplication] = await Promise.all([
       JobDescription.findById(jobId),
-      Resume.findById(resumeId),
+      Resume.findOne({ _id: resumeId, userId: req.user.id }),
       Application.findOne({ jobId, candidateId: req.user.id })
     ]);
 
@@ -56,7 +56,8 @@ export const applyToJob = async (req, res, next) => {
       applicationId: application._id,
       actorId: req.user.id,
       action: 'application_submitted',
-      context: { jobId }
+      context: { jobId },
+      orgId: req.orgId || job.orgId
     });
 
     return res.status(201).json(application);
@@ -67,7 +68,8 @@ export const applyToJob = async (req, res, next) => {
 
 export const getMyApplications = async (req, res, next) => {
   try {
-    const applications = await Application.find({ candidateId: req.user.id })
+    const query = { candidateId: req.user.id };
+    const applications = await Application.find(query)
       .populate('jobId')
       .sort({ createdAt: -1 });
 

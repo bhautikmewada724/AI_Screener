@@ -1,11 +1,13 @@
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 
 import {
   fetchCandidateRecommendations,
   refreshCandidateRecommendations,
   sendRecommendationFeedback
 } from '../../api/candidate';
+import { ApiError } from '../../api/client';
 import PageHeader from '../../components/ui/PageHeader';
 import SectionCard from '../../components/ui/SectionCard';
 import ErrorState from '../../components/ui/ErrorState';
@@ -45,11 +47,13 @@ const CandidateRecommendationsPage = () => {
       const previous = queryClient.getQueryData<Recommendation>(['candidate-recommendations']);
       queryClient.setQueryData<Recommendation | undefined>(['candidate-recommendations'], (current) => {
         if (!current) return current;
-        const updatedJobs =
+        const updatedJobs: RecommendedJob[] =
           payload.feedbackType === 'dismissed'
-            ? current.recommendedJobs.filter((job: RecommendedJob) => job.jobId !== payload.jobId)
-            : current.recommendedJobs.map((job: RecommendedJob) =>
-                job.jobId === payload.jobId ? { ...job, status: 'saved' } : job
+            ? current.recommendedJobs
+                .filter((job) => job.jobId !== payload.jobId)
+                .map((job) => ({ ...job, status: job.status || 'shown' }))
+            : current.recommendedJobs.map((job) =>
+                job.jobId === payload.jobId ? { ...job, status: 'saved' as const } : { ...job, status: job.status || 'shown' }
               );
         return { ...current, recommendedJobs: updatedJobs };
       });
@@ -66,7 +70,7 @@ const CandidateRecommendationsPage = () => {
   });
 
   const recommendations = recommendationsQuery.data?.recommendedJobs || [];
-  const isLoading = recommendationsQuery.isLoading || refreshMutation.isLoading;
+  const isLoading = recommendationsQuery.isLoading || refreshMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -78,9 +82,9 @@ const CandidateRecommendationsPage = () => {
             <button
               className="btn btn-secondary"
               onClick={() => refreshMutation.mutate()}
-              disabled={refreshMutation.isLoading}
+              disabled={refreshMutation.isPending}
             >
-              {refreshMutation.isLoading ? 'Refreshing…' : 'Refresh'}
+              {refreshMutation.isPending ? 'Refreshing…' : 'Refresh'}
             </button>
             <Link className="btn btn-primary" to="/candidate/jobs">
               Browse all jobs
@@ -90,7 +94,13 @@ const CandidateRecommendationsPage = () => {
       />
 
       {recommendationsQuery.isError && (
-        <ErrorState message={(recommendationsQuery.error as Error).message || 'Failed to load recommendations.'} />
+        <ErrorState
+          message={
+            recommendationsQuery.error instanceof ApiError && recommendationsQuery.error.status >= 500
+              ? 'AI recommendations are temporarily unavailable. You can still browse jobs manually.'
+              : (recommendationsQuery.error as Error).message || 'Failed to load recommendations.'
+          }
+        />
       )}
 
       {isLoading ? (
@@ -117,7 +127,7 @@ const CandidateRecommendationsPage = () => {
               job={job}
               onDismiss={(jobId) => feedbackMutation.mutate({ jobId, feedbackType: 'dismissed' })}
               onSave={(jobId) => feedbackMutation.mutate({ jobId, feedbackType: 'saved' })}
-              isMutating={feedbackMutation.isLoading}
+              isMutating={feedbackMutation.isPending}
             />
           ))}
         </div>

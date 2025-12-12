@@ -5,7 +5,8 @@ import logging
 import re
 from typing import List, Optional, Tuple
 
-from core import get_embeddings_client, get_llm_client
+from utils.embeddings_client import get_embeddings_client
+from utils.llm_client import get_llm_client
 from models.job import JobDescriptionRequest, JobDescriptionResponse
 from services.skill_utils import extract_skills, normalize_skill_list
 from utils.settings import get_settings

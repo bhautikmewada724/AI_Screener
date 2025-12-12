@@ -1,15 +1,18 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../hooks/useAuth';
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const redirectTo = (location.state as any)?.from || '/candidate/dashboard';
+  const prefillMessage = (location.state as any)?.message as string | undefined;
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -18,11 +21,11 @@ const LoginPage = () => {
     try {
       const loggedInUser = await login(email, password);
       if (loggedInUser.role === 'admin') {
-        navigate('/admin/overview');
+        navigate('/admin/overview', { replace: true });
       } else if (loggedInUser.role === 'hr') {
-        navigate('/hr/dashboard');
+        navigate('/hr/dashboard', { replace: true });
       } else {
-        navigate('/candidate/dashboard');
+        navigate(redirectTo, { replace: true });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -79,6 +82,9 @@ const LoginPage = () => {
             {error}
           </div>
         )}
+        {prefillMessage && !error && (
+          <div style={{ color: '#475569', fontSize: '0.9rem', fontWeight: 600 }}>{prefillMessage}</div>
+        )}
 
         <button
           className="btn"
@@ -88,7 +94,7 @@ const LoginPage = () => {
           {loading ? 'Signing in...' : 'Sign in'}
         </button>
         <small style={{ color: '#64748b' }}>
-          Use admin or HR credentials provisioned via `/auth/register`. candidates should continue using the
+          Admin and HR accounts are provisioned by existing admins. Candidates should continue using the
           mobile/desktop experience designed for them.
         </small>
       </form>

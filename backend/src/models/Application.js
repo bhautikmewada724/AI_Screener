@@ -74,6 +74,7 @@ const applicationSchema = new Schema(
 );
 
 applicationSchema.index({ jobId: 1, candidateId: 1 }, { unique: true });
+applicationSchema.index({ createdAt: -1 });
 
 const Application =
   mongoose.models.Application || mongoose.model('Application', applicationSchema);

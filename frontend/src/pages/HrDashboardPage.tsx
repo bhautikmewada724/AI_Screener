@@ -58,14 +58,16 @@ const HrDashboardPage = () => {
         )}
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {jobs.map((job) => (
+          {jobs.map((job) => {
+            const status = job.status ?? 'draft';
+            return (
             <Link key={job._id} to={`/hr/jobs/${job._id}`} className="card space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="text-lg font-semibold text-brand-navy">{job.title}</h3>
                   <p className="text-sm text-brand-ash">{job.location || 'Remote / Flexible'}</p>
                 </div>
-                <span className={`status-badge ${job.status}`}>{job.status.replace('_', ' ')}</span>
+                <span className={`status-badge ${status}`}>{status.replace('_', ' ')}</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {(job.tags || job.requiredSkills?.slice(0, 3) || []).map((chip) => (
@@ -75,7 +77,8 @@ const HrDashboardPage = () => {
                 ))}
               </div>
             </Link>
-          ))}
+          );
+          })}
         </div>
       </section>
     </div>

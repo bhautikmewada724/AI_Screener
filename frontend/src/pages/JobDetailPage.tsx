@@ -12,6 +12,7 @@ import {
   refreshApplicationScore,
   updateApplicationStatus
 } from '../api/hr';
+import { ApiError } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
 import type { ApplicationRecord } from '../types/api';
 import { fetchJobMatches } from '../api/matching';
@@ -21,6 +22,13 @@ import AuditTimeline from '../components/AuditTimeline';
 import PageHeader from '../components/ui/PageHeader';
 
 const STATUS_OPTIONS = ['applied', 'in_review', 'shortlisted', 'rejected', 'hired'] as const;
+const ALLOWED_TRANSITIONS: Record<(typeof STATUS_OPTIONS)[number], Array<(typeof STATUS_OPTIONS)[number]>> = {
+  applied: ['in_review', 'rejected'],
+  in_review: ['shortlisted', 'rejected'],
+  shortlisted: ['hired', 'rejected'],
+  hired: [],
+  rejected: []
+};
 
 type MatchExplanation = {
   missingSkills?: string[];
@@ -37,6 +45,7 @@ const JobDetailPage = () => {
 
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedApplication, setSelectedApplication] = useState<ApplicationRecord | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const jobQuery = useQuery({
     queryKey: ['job', jobId],
@@ -82,6 +91,10 @@ const JobDetailPage = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['review-queue'] });
       queryClient.invalidateQueries({ queryKey: ['audit', variables.applicationId] });
+      setStatusError(null);
+    },
+    onError: (error: Error) => {
+      setStatusError(error.message || 'Failed to update status.');
     }
   });
 
@@ -106,6 +119,11 @@ const JobDetailPage = () => {
   const handleStatusChange = (status: string, application?: ApplicationRecord) => {
     const target = application ?? selectedApplication;
     if (!target) return;
+    const allowed = ALLOWED_TRANSITIONS[target.status as keyof typeof ALLOWED_TRANSITIONS] || [];
+    if (!allowed.includes(status as any)) {
+      setStatusError(`Cannot move from ${target.status.replace('_', ' ')} to ${status.replace('_', ' ')}.`);
+      return;
+    }
     setSelectedApplication(target);
     statusMutation.mutate({ applicationId: target._id, status });
   };
@@ -194,7 +212,11 @@ const JobDetailPage = () => {
             </div>
             {aiMatchesQuery.isLoading && <p className="text-sm text-brand-ash">Loading AI matches…</p>}
             {aiMatchesQuery.isError && (
-              <p className="text-sm text-rose-600">Failed to load AI matches: {(aiMatchesQuery.error as Error).message}</p>
+              <p className="text-sm text-rose-600">
+                {aiMatchesQuery.error instanceof ApiError && aiMatchesQuery.error.status >= 500
+                  ? 'AI matching is temporarily unavailable. You can still review candidates manually.'
+                  : `Failed to load AI matches: ${(aiMatchesQuery.error as Error).message}`}
+              </p>
             )}
             {aiMatchesQuery.data?.data?.length ? (
               <div className="grid gap-4 sm:grid-cols-2">
@@ -328,6 +350,7 @@ const JobDetailPage = () => {
                                 event.stopPropagation();
                                 handleStatusChange('shortlisted', application);
                               }}
+                              disabled={!ALLOWED_TRANSITIONS[application.status as keyof typeof ALLOWED_TRANSITIONS]?.includes('shortlisted')}
                             >
                               Shortlist
                             </button>
@@ -338,6 +361,7 @@ const JobDetailPage = () => {
                                 event.stopPropagation();
                                 handleStatusChange('rejected', application);
                               }}
+                              disabled={!ALLOWED_TRANSITIONS[application.status as keyof typeof ALLOWED_TRANSITIONS]?.includes('rejected')}
                             >
                               Reject
                             </button>
@@ -390,6 +414,7 @@ const JobDetailPage = () => {
                         event.stopPropagation();
                         handleStatusChange('shortlisted', application);
                       }}
+                      disabled={!ALLOWED_TRANSITIONS[application.status as keyof typeof ALLOWED_TRANSITIONS]?.includes('shortlisted')}
                     >
                       Shortlist
                     </button>
@@ -400,6 +425,7 @@ const JobDetailPage = () => {
                         event.stopPropagation();
                         handleStatusChange('rejected', application);
                       }}
+                      disabled={!ALLOWED_TRANSITIONS[application.status as keyof typeof ALLOWED_TRANSITIONS]?.includes('rejected')}
                     >
                       Reject
                     </button>
@@ -456,12 +482,16 @@ const JobDetailPage = () => {
                   selectedApplication?.status === status ? 'bg-brand-navy text-white' : 'bg-slate-100 text-brand-navy'
                 )}
                 onClick={() => handleStatusChange(status)}
-                disabled={!selectedApplication}
+                disabled={
+                  !selectedApplication ||
+                  !ALLOWED_TRANSITIONS[selectedApplication.status as keyof typeof ALLOWED_TRANSITIONS]?.includes(status)
+                }
               >
                 {status.replace('_', ' ')}
               </button>
             ))}
           </div>
+          {statusError && <p className="text-sm text-rose-600">{statusError}</p>}
         </section>
       </section>
 

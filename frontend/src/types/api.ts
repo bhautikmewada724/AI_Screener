@@ -121,6 +121,17 @@ export interface AuditEventRecord {
   createdAt: string;
 }
 
+export interface UserAuditEvent {
+  id: string;
+  actorId?: string;
+  targetUserId?: string;
+  action: string;
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  context?: Record<string, unknown>;
+  createdAt?: string;
+}
+
 export interface RecommendedJob {
   jobId: string;
   score: number;

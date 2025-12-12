@@ -41,7 +41,7 @@ app.use('/hr', jobRouter);
 app.use('/hr', hrWorkflowRouter);
 app.use('/admin', adminRouter);
 app.use('/matching', matchingRouter);
-app.use('/', recommendationRouter);
+app.use('/candidate', recommendationRouter);
 
 // Swagger docs
 const serverUrl = process.env.API_BASE_URL || `http://localhost:${PORT}`;

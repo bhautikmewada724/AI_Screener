@@ -1,13 +1,15 @@
 import { Router } from 'express';
 
 import { pingAIService, parseResume } from '../services/aiService.js';
+import { authenticate, authorizeRoles } from '../middlewares/authMiddleware.js';
+import { ROLES } from '../utils/roles.js';
 
 const router = Router();
 
 /**
  * Connectivity test route. Calls the FastAPI /health endpoint.
  */
-router.get('/test', async (req, res, next) => {
+router.get('/test', authenticate, authorizeRoles(ROLES.ADMIN), async (req, res, next) => {
   try {
     const response = await pingAIService();
     res.json({ from: 'AI service', response });
@@ -19,7 +21,7 @@ router.get('/test', async (req, res, next) => {
 /**
  * Example route that proxies to FastAPI parse-resume endpoint with mocked payload.
  */
-router.get('/sample-resume', async (req, res, next) => {
+router.get('/sample-resume', authenticate, authorizeRoles(ROLES.ADMIN), async (req, res, next) => {
   try {
     const response = await parseResume({
       resume_text: 'Backend engineer with Node.js and FastAPI experience.',

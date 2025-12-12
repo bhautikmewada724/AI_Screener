@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiRequest, withQuery } from './client';
+import { API_BASE_URL, ApiError, apiRequest, withQuery } from './client';
 import type {
   ApplicationRecord,
   JobDescription,
@@ -26,10 +26,22 @@ export const uploadCandidateResume = async (file: File, token?: string) => {
 
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.message || 'Failed to upload resume');
+    const status = response.status;
+    const baseMessage = payload?.message || response.statusText || 'Failed to upload resume';
+    let friendly = baseMessage;
+
+    if (status === 400) {
+      friendly = 'Only PDF, DOC, or DOCX files up to 5MB are allowed.';
+    } else if (status === 401) {
+      friendly = 'Please sign in to upload a resume.';
+    } else if (status === 429) {
+      friendly = 'Too many uploads in a short time. Please try again later.';
+    }
+
+    throw new ApiError(friendly, status, payload?.code, payload);
   }
 
-  return response.json() as Promise<{ resumeId: string }>;
+  return response.json() as Promise<{ resumeId: string; status: string }>;
 };
 
 export const fetchOpenJobs = (params: { page?: number; limit?: number; search?: string; location?: string }, token?: string) => {
