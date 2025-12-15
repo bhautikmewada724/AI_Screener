@@ -1,9 +1,6 @@
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import type { ReactNode } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
 
-import HrLayout from './layouts/HrLayout';
-import AdminLayout from './layouts/AdminLayout';
-import CandidateLayout from './layouts/CandidateLayout';
+import RoleLayout from './layouts/RoleLayout';
 import LoginPage from './pages/LoginPage';
 import HrDashboardPage from './pages/HrDashboardPage';
 import JobDetailPage from './pages/JobDetailPage';
@@ -18,47 +15,15 @@ import CandidateJobsPage from './pages/candidate/CandidateJobsPage';
 import CandidateJobDetailPage from './pages/candidate/CandidateJobDetailPage';
 import CandidateApplicationsPage from './pages/candidate/CandidateApplicationsPage';
 import CandidateRecommendationsPage from './pages/candidate/CandidateRecommendationsPage';
-import { useAuth } from './hooks/useAuth';
-import NotAuthorized from './components/ui/NotAuthorized';
-
-interface ProtectedRouteProps {
-  children: ReactNode;
-  roles?: Array<'admin' | 'hr' | 'candidate'>;
-}
-
-const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
-  const { isAuthenticated, user, isBootstrapping, lastAuthError } = useAuth();
-  const location = useLocation();
-
-  if (isBootstrapping) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: '#475569' }}>
-        Verifying session…
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location.pathname, message: lastAuthError || 'Please sign in.' }} replace />;
-  }
-
-  if (roles && user && !roles.includes(user.role)) {
-    return <NotAuthorized />;
-  }
-
-  return <>{children}</>;
-};
+import NotificationsPage from './pages/NotificationsPage';
+import NotificationPreferencesPage from './pages/NotificationPreferencesPage';
 
 const App = () => {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route
-        element={
-          <ProtectedRoute roles={['candidate']}>
-            <CandidateLayout />
-          </ProtectedRoute>
-        }
+        element={<RoleLayout allowedRoles={['candidate']} navRole="candidate" />}
       >
         <Route path="/candidate/dashboard" element={<CandidateDashboardPage />} />
         <Route path="/candidate/resumes" element={<CandidateResumesPage />} />
@@ -68,21 +33,13 @@ const App = () => {
         <Route path="/candidate/applications" element={<CandidateApplicationsPage />} />
       </Route>
       <Route
-        element={
-          <ProtectedRoute roles={['hr', 'admin']}>
-            <HrLayout />
-          </ProtectedRoute>
-        }
+        element={<RoleLayout allowedRoles={['hr', 'admin']} navRole="hr" />}
       >
         <Route path="/hr/dashboard" element={<HrDashboardPage />} />
         <Route path="/hr/jobs/:jobId" element={<JobDetailPage />} />
       </Route>
       <Route
-        element={
-          <ProtectedRoute roles={['admin']}>
-            <AdminLayout />
-          </ProtectedRoute>
-        }
+        element={<RoleLayout allowedRoles={['admin']} navRole="admin" />}
       >
         <Route path="/admin/overview" element={<AdminOverviewPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
@@ -90,6 +47,12 @@ const App = () => {
         <Route path="/admin/jobs" element={<AdminJobsPage />} />
         <Route path="/admin/jobs/new" element={<AdminJobFormPage />} />
         <Route path="/admin/jobs/:jobId/edit" element={<AdminJobFormPage />} />
+      </Route>
+      <Route
+        element={<RoleLayout allowedRoles={['admin', 'hr', 'candidate']} navRole="auto" />}
+      >
+        <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/settings/notifications" element={<NotificationPreferencesPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

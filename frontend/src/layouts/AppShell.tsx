@@ -9,6 +9,7 @@ import {
   useState
 } from 'react';
 import { NavLink } from 'react-router-dom';
+import NotificationBell from '../components/NotificationBell';
 
 export interface ShellNavItem {
   to: string;
@@ -157,8 +158,8 @@ export const AppShell = ({ title, subtitle, navItems, children, onLogout }: AppS
                     <small className="truncate text-xs text-brand-ash">{topbarContent.subtitle}</small>
                   )}
                 </div>
-                <div className="hidden flex-1 items-center justify-end gap-2 lg:flex">
-              {/* Placeholder for future top bar actions */}
+                <div className="flex flex-1 items-center justify-end gap-2">
+                  <NotificationBell />
                 </div>
             </div>
           </div>

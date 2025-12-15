@@ -1,22 +1,8 @@
-import { ShellNavItem } from './AppShell';
+import type { ShellNavItem } from './AppShell';
+import { ROLE_CONFIG } from '../config/roleConfig';
 
-export const adminNavItems: ShellNavItem[] = [
-  { to: '/admin/overview', label: 'System Overview' },
-  { to: '/admin/users', label: 'User Management' },
-  { to: '/admin/jobs', label: 'Job Management' }
-];
-
-export const hrNavItems: ShellNavItem[] = [
-  { to: '/hr/dashboard', label: 'Dashboard' },
-  { to: '/hr/jobs/overview', label: 'Job Workflows', disabled: true }
-];
-
-export const candidateNavItems: ShellNavItem[] = [
-  { to: '/candidate/dashboard', label: 'Dashboard' },
-  { to: '/candidate/resumes', label: 'Resumes' },
-  { to: '/candidate/recommendations', label: 'Recommendations' },
-  { to: '/candidate/jobs', label: 'Jobs' },
-  { to: '/candidate/applications', label: 'Applications' }
-];
+export const adminNavItems: ShellNavItem[] = ROLE_CONFIG.admin.navItems;
+export const hrNavItems: ShellNavItem[] = ROLE_CONFIG.hr.navItems;
+export const candidateNavItems: ShellNavItem[] = ROLE_CONFIG.candidate.navItems;
 
 

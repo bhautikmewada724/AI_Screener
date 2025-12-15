@@ -166,4 +166,25 @@ export interface PaginatedResponse<T> {
   };
 }
 
+export interface NotificationRecord {
+  id: string;
+  type: string;
+  title: string;
+  body?: string;
+  data?: Record<string, unknown>;
+  channelTargets: { inApp?: boolean; email?: boolean };
+  status?: string;
+  readAt?: string | null;
+  createdAt?: string;
+}
+
+export interface NotificationPreference {
+  id?: string;
+  typePattern: string;
+  inAppEnabled: boolean;
+  emailEnabled: boolean;
+  digestMode?: 'none' | 'instant' | 'daily' | 'weekly';
+  quietHours?: Record<string, unknown> | null;
+}
+
 
