@@ -16,6 +16,7 @@
   a {
     @apply text-inherit no-underline;
   }
+
 }
 
 @layer components {
@@ -106,6 +107,15 @@
     @apply badge bg-slate-100 text-brand-ash;
   }
 
+
+  [data-theme='dark'] .text-brand-navy {
+    color: #e2e8f0 !important;
+  }
+
+  [data-theme='dark'] .text-brand-ash {
+    color: #cbd5e1 !important;
+  }
+
   /* Tables */
   .table {
     @apply w-full table-auto border-collapse text-left text-sm;
@@ -122,6 +132,7 @@
   .table tbody tr:hover {
     @apply bg-slate-50/60;
   }
+
 
   /* Status chips */
   .status-badge {
@@ -180,6 +191,7 @@
     @apply bg-rose-600;
   }
 
+
   /* States */
   .empty-state,
   .loading-state,
@@ -194,4 +206,5 @@
   .skeleton {
     @apply animate-pulse rounded-2xl bg-slate-200/70;
   }
+
 }

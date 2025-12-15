@@ -105,6 +105,13 @@ npm run dev
 
 Visit `http://localhost:5173` and sign in with an HR- or admin-role account created via `/auth/register`. The frontend stores the JWT in `localStorage` and routes requests through the backend gateway only.
 
+## Client State (Redux + React Query)
+
+- React Query remains the source of truth for server data, caching, and request lifecycles.
+- Redux Toolkit centralizes client-only state (auth session, UI toggles) under `frontend/src/store`.
+- The auth slice hydrates from and persists to `localStorage` (`ai-screener-auth`) so JWTs survive refresh.
+- Use the `useAuth` hook for login/logout/token access; avoid duplicating backend lists in Redux.
+
 ## Phase 7 – Admin Console
 
 The Admin Console adds platform oversight tools:
