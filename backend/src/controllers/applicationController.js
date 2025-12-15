@@ -2,7 +2,6 @@ import Application from '../models/Application.js';
 import JobDescription from '../models/JobDescription.js';
 import Resume from '../models/Resume.js';
 import { ensureMatchResult, recordAuditEvent } from '../services/hrWorkflowService.js';
-import { emitNotification } from '../services/notificationService.js';
 
 /**
  * Candidate-facing application flows for submitting interest in a job.
@@ -60,26 +59,6 @@ export const applyToJob = async (req, res, next) => {
       context: { jobId },
       orgId: req.orgId || job.orgId
     });
-
-    const appBaseUrl = process.env.APP_BASE_URL || 'http://localhost:5173';
-    const deepLink = `${appBaseUrl}/hr/dashboard`;
-    emitNotification({
-      type: 'application.submitted',
-      userId: job.hrId?.toString?.(),
-      payload: {
-        title: 'New application received',
-        body: `${req.user.id ? 'A candidate' : 'Candidate'} applied to ${job.title}.`,
-        data: {
-          applicationId: application._id?.toString?.(),
-          jobId: job._id?.toString?.(),
-          candidateId: req.user.id,
-          deepLink
-        },
-        deepLink
-      },
-      channels: { inApp: true, email: true },
-      idempotencyKey: `application-submitted:${application._id}`
-    }).catch((err) => console.error('Failed to emit application notification:', err.message));
 
     return res.status(201).json(application);
   } catch (error) {

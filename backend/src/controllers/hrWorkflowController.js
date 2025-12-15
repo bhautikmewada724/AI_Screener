@@ -12,7 +12,6 @@ import {
   refreshApplicationMatch
 } from '../services/hrWorkflowService.js';
 import { assertValidTransition, APPLICATION_STATUSES } from '../services/applicationStatusRules.js';
-import { emitNotification } from '../services/notificationService.js';
 
 /**
  * HR-specific workflow endpoints: queues, scoring, comments, and audit trail.
@@ -103,27 +102,6 @@ export const updateApplicationStatus = async (req, res, next) => {
       }
     });
 
-    // Notify candidate about status change (idempotent per application + status)
-    const appBaseUrl = process.env.APP_BASE_URL || 'http://localhost:5173';
-    const deepLink = `${appBaseUrl}/candidate/applications`;
-    emitNotification({
-      type: 'application.status_changed',
-      userId: application.candidateId?.toString?.(),
-      payload: {
-        title: 'Application status updated',
-        body: `Your application status is now "${status.replace('_', ' ')}".`,
-        data: {
-          applicationId: application._id?.toString?.(),
-          jobId: job._id?.toString?.(),
-          status,
-          deepLink
-        },
-        deepLink
-      },
-      channels: { inApp: true, email: true },
-      idempotencyKey: `application-status:${application._id}:${status}`
-    }).catch((err) => console.error('Failed to emit notification:', err.message));
-
     return res.json({ application });
   } catch (error) {
     next(error);
@@ -174,54 +152,6 @@ export const addComment = async (req, res, next) => {
       body,
       visibility
     });
-
-    // Notify the opposite party (candidate vs HR) about the new shared comment.
-    const isShared = visibility !== 'private';
-    const recipients = new Set();
-
-    if (isShared && (req.user.role === 'hr' || req.user.role === 'admin')) {
-      if (application?.candidateId?.toString) {
-        recipients.add(application.candidateId.toString());
-      }
-    }
-
-    if (isShared && req.user.role === 'candidate') {
-      // Notify job owner and assigned reviewer, excluding the author.
-      if (job?.hrId?.toString) {
-        recipients.add(job.hrId.toString());
-      }
-      if (application?.assignedTo?.toString) {
-        recipients.add(application.assignedTo.toString());
-      }
-    }
-
-    recipients.delete(req.user.id?.toString?.());
-
-    const appBaseUrl = process.env.APP_BASE_URL || 'http://localhost:5173';
-    const candidateDeepLink = `${appBaseUrl}/candidate/applications`;
-    const hrDeepLink = `${appBaseUrl}/hr/jobs/${job?._id?.toString?.()}`;
-
-    for (const userId of recipients) {
-      const deepLink = req.user.role === 'candidate' ? hrDeepLink : candidateDeepLink;
-      emitNotification({
-        type: 'application.comment_added',
-        userId,
-        payload: {
-          title: 'New comment on application',
-          body,
-          data: {
-            applicationId: application?._id?.toString?.(),
-            jobId: job?._id?.toString?.(),
-            noteId: note?._id?.toString?.(),
-            visibility,
-            deepLink
-          },
-          deepLink
-        },
-        channels: { inApp: true, email: true },
-        idempotencyKey: `application.comment:${note?._id?.toString?.()}:${userId}`
-      }).catch((err) => console.error('Failed to emit comment notification:', err.message));
-    }
 
     return res.status(201).json({ note });
   } catch (error) {

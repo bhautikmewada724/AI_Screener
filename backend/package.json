@@ -8,8 +8,7 @@
     "dev": "nodemon src/app.js",
     "start": "nodemon src/app.js",
     "model:sanity": "node ./scripts/modelSanityCheck.js",
-    "test": "node --test \"src/**/__tests__/*.test.js\"",
-    "notification:worker": "node src/workers/notificationEmailWorker.js"
+    "test": "node --test \"src/**/__tests__/*.test.js\""
   },
   "keywords": [
     "express",
@@ -29,7 +28,6 @@
     "mongoose": "^9.0.0",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
-    "nodemailer": "^6.10.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
   },

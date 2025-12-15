@@ -26,7 +26,7 @@ Single guard layer for all protected routes lives in `frontend/src/layouts/RoleL
   - Candidate: `<RoleLayout allowedRoles={['candidate']} navRole="candidate" />`
   - HR: `<RoleLayout allowedRoles={['hr', 'admin']} navRole="hr" />`
   - Admin: `<RoleLayout allowedRoles={['admin']} navRole="admin" />`
-  - Shared (notifications/preferences): `<RoleLayout allowedRoles={['admin','hr','candidate']} navRole="auto" />`
+- Shared routes can mount `<RoleLayout allowedRoles={[...]} navRole="auto" />` when multiple roles share navigation.
 
 ## Adding a new role or route group
 1) Add a `RoleDefinition` entry in `roleConfig.ts` (allowedRoles, nav, title).

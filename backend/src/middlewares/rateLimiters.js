@@ -7,7 +7,7 @@ const intFromEnv = (key, fallback) => {
 };
 
 export const LOGIN_RATE_LIMIT_WINDOW_MS = toMs(intFromEnv('RATE_LIMIT_LOGIN_WINDOW_MINUTES', 15));
-export const LOGIN_RATE_LIMIT_MAX = intFromEnv('RATE_LIMIT_LOGIN_MAX', 5);
+export const LOGIN_RATE_LIMIT_MAX = intFromEnv('RATE_LIMIT_LOGIN_MAX', 10);
 
 export const REGISTER_RATE_LIMIT_WINDOW_MS = toMs(intFromEnv('RATE_LIMIT_REGISTER_WINDOW_MINUTES', 15));
 export const REGISTER_RATE_LIMIT_MAX = intFromEnv('RATE_LIMIT_REGISTER_MAX', 5);

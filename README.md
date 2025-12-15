@@ -78,25 +78,6 @@ See `docs/data-model.md` for field-level detail, indexes, and sanity test instru
 
 Each service maintains its own `.env` file (ignored by git) for clarity and least privilege. Shared secrets (e.g., `JWT_SECRET`) reside only where needed, and inter-service URLs (e.g., `AI_SERVICE_URL`) point to private network addresses or service discovery entries.
 
-## Notifications & Messaging
-
-- Channels: in-app + email (SMTP via `nodemailer`), realtime via SSE with polling fallback.
-- Core DB collections: `notifications`, `notification_preferences`, `notification_delivery_logs`, `unsubscribe_tokens`.
-- Emit API: `emitNotification({ type, userId, payload, channels?, idempotencyKey? })` in `backend/src/services/notificationService.js`. Idempotency enforced via `idempotencyKey` unique index on delivery logs.
-- Endpoints (all auth-scoped except unsubscribe):
-  - `GET /api/notifications` (pagination, filters, unreadCount)
-  - `POST /api/notifications/mark-read`
-  - `POST /api/notifications/mark-all-read`
-  - `GET /api/notification-preferences`
-  - `PUT /api/notification-preferences`
-  - `GET /api/notifications/stream` (SSE, token in header or `?token=` query)
-  - `GET /api/unsubscribe?token=...`
-- Worker: `npm run notification:worker` (backend) runs `src/workers/notificationEmailWorker.js`, polling queued email deliveries asynchronously.
-- Email templates: `backend/src/services/emailTemplates.js` include unsubscribe link and deep link.
-- Frontend: notification bell + dropdown in top bar, `/notifications` list, `/settings/notifications` preferences, SSE updates with polling fallback.
-- Env vars (backend): `EMAIL_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE` (true|false), `SMTP_USER`, `SMTP_PASS`, `APP_BASE_URL` (for deep links), `API_BASE_URL` (for unsubscribe link generation), optional `NOTIFICATION_WORKER_POLL_MS`, `NOTIFICATION_WORKER_BATCH`.
-- Adding a new notification type: emit from backend using `emitNotification`, provide `type` (e.g., `application.status_changed`), payload `{ title, body, data: { deepLink, ... } }`, set an idempotency key like `${type}:${userId}:${stableId}`.
-
 ## Phase 6 – HR Workflows
 
 Phase 6 introduces the HR tools defined in `docs/roadmap.md`:

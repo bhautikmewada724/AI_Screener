@@ -12,9 +12,6 @@ export interface RoleDefinition {
   landing: string;
 }
 
-const notificationsNav = { to: '/notifications', label: 'Notifications' };
-const notificationSettingsNav = { to: '/settings/notifications', label: 'Notification Settings' };
-
 export const ROLE_CONFIG: Record<RoleKey, RoleDefinition> = {
   admin: {
     key: 'admin',
@@ -25,9 +22,7 @@ export const ROLE_CONFIG: Record<RoleKey, RoleDefinition> = {
     navItems: [
       { to: '/admin/overview', label: 'System Overview' },
       { to: '/admin/users', label: 'User Management' },
-      { to: '/admin/jobs', label: 'Job Management' },
-      notificationsNav,
-      notificationSettingsNav
+      { to: '/admin/jobs', label: 'Job Management' }
     ]
   },
   hr: {
@@ -38,9 +33,7 @@ export const ROLE_CONFIG: Record<RoleKey, RoleDefinition> = {
     landing: '/hr/dashboard',
     navItems: [
       { to: '/hr/dashboard', label: 'Dashboard' },
-      { to: '/hr/jobs/overview', label: 'Job Workflows', disabled: true },
-      notificationsNav,
-      notificationSettingsNav
+      { to: '/hr/jobs/overview', label: 'Job Workflows', disabled: true }
     ]
   },
   candidate: {
@@ -54,9 +47,7 @@ export const ROLE_CONFIG: Record<RoleKey, RoleDefinition> = {
       { to: '/candidate/resumes', label: 'Resumes' },
       { to: '/candidate/recommendations', label: 'Recommendations' },
       { to: '/candidate/jobs', label: 'Jobs' },
-      { to: '/candidate/applications', label: 'Applications' },
-      notificationsNav,
-      notificationSettingsNav
+      { to: '/candidate/applications', label: 'Applications' }
     ]
   }
 };

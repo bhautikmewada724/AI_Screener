@@ -15,8 +15,6 @@ import CandidateJobsPage from './pages/candidate/CandidateJobsPage';
 import CandidateJobDetailPage from './pages/candidate/CandidateJobDetailPage';
 import CandidateApplicationsPage from './pages/candidate/CandidateApplicationsPage';
 import CandidateRecommendationsPage from './pages/candidate/CandidateRecommendationsPage';
-import NotificationsPage from './pages/NotificationsPage';
-import NotificationPreferencesPage from './pages/NotificationPreferencesPage';
 
 const App = () => {
   return (
@@ -47,12 +45,6 @@ const App = () => {
         <Route path="/admin/jobs" element={<AdminJobsPage />} />
         <Route path="/admin/jobs/new" element={<AdminJobFormPage />} />
         <Route path="/admin/jobs/:jobId/edit" element={<AdminJobFormPage />} />
-      </Route>
-      <Route
-        element={<RoleLayout allowedRoles={['admin', 'hr', 'candidate']} navRole="auto" />}
-      >
-        <Route path="/notifications" element={<NotificationsPage />} />
-        <Route path="/settings/notifications" element={<NotificationPreferencesPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
