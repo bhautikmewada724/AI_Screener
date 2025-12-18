@@ -49,7 +49,9 @@ export const applyToJob = async (req, res, next) => {
       matchResultId: matchResult._id,
       matchScore: matchResult.matchScore,
       matchedSkills: matchResult.matchedSkills,
-      matchExplanation: matchResult.explanation
+      matchExplanation: matchResult.explanation,
+      scoreBreakdown: matchResult.scoreBreakdown,
+      scoringConfigVersion: matchResult.scoringConfigVersion
     });
 
     await recordAuditEvent({

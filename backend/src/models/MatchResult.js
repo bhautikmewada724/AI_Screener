@@ -40,6 +40,14 @@ const matchResultSchema = new Schema(
       type: Schema.Types.Mixed,
       default: () => ({})
     },
+    scoreBreakdown: {
+      type: Schema.Types.Mixed,
+      default: null
+    },
+    scoringConfigVersion: {
+      type: Number,
+      default: 0
+    },
     metadata: {
       type: Map,
       of: String

@@ -1,9 +1,14 @@
 import JobDescription from '../models/JobDescription.js';
 import Resume from '../models/Resume.js';
 import MatchResult from '../models/MatchResult.js';
+import AuditEvent from '../models/AuditEvent.js';
 import { parseJobDescription } from '../services/aiService.js';
 import { ensureMatchResult } from '../services/hrWorkflowService.js';
 import { transformAiJdToJobFields } from '../services/aiTransformers.js';
+import {
+  mergeWithDefaults,
+  validateAndNormalizeScoringConfig
+} from '../services/scoringConfig.js';
 
 const shouldAutoParseJd = () => String(process.env.ENABLE_JD_PARSING).toLowerCase() === 'true';
 
@@ -215,6 +220,69 @@ export const updateJob = async (req, res, next) => {
   }
 };
 
+export const getScoringConfig = async (req, res, next) => {
+  try {
+    const job = await JobDescription.findById(req.params.jobId);
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found.' });
+    }
+
+    ensureOwnerOrAdmin(job, req.user);
+
+    const config = mergeWithDefaults(job.scoringConfig || {});
+    const version = job.scoringConfigVersion ?? config.version ?? 0;
+
+    return res.json({ scoringConfig: { ...config, version } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateScoringConfig = async (req, res, next) => {
+  try {
+    const job = await JobDescription.findById(req.params.jobId);
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found.' });
+    }
+
+    ensureOwnerOrAdmin(job, req.user);
+
+    let normalized;
+    try {
+      normalized = validateAndNormalizeScoringConfig(req.body || {});
+    } catch (error) {
+      return res.status(error.status || 400).json({ message: error.message });
+    }
+
+    const previousVersion = job.scoringConfigVersion || job.scoringConfig?.version || 0;
+    const nextVersion = previousVersion + 1;
+
+    job.scoringConfig = {
+      ...normalized,
+      version: nextVersion
+    };
+    job.scoringConfigVersion = nextVersion;
+
+    await job.save();
+
+    await AuditEvent.create({
+      actorId: req.user.id,
+      action: 'scoring_config_updated',
+      context: {
+        jobId: job._id,
+        previousVersion,
+        newVersion: nextVersion
+      },
+      before: job.scoringConfig ? new Map([['version', previousVersion]]) : undefined,
+      after: new Map([['version', nextVersion]])
+    });
+
+    return res.json({ scoringConfig: job.scoringConfig });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const deleteJob = async (req, res, next) => {
   try {
     const job = await JobDescription.findById(req.params.jobId);
@@ -282,6 +350,8 @@ export const getJobMatches = async (req, res, next) => {
         explanation: match.explanation,
         missingSkills: match.missingSkills,
         embeddingSimilarity: match.embeddingSimilarity,
+        scoreBreakdown: match.scoreBreakdown,
+        scoringConfigVersion: match.scoringConfigVersion,
         resumeSummary: resume.parsedData?.summary,
         resumeSkills: resume.parsedData?.skills
       })),

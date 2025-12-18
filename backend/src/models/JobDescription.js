@@ -67,6 +67,27 @@ const jobDescriptionSchema = new Schema(
     metadata: {
       type: Map,
       of: String
+    },
+    scoringConfig: {
+      weights: {
+        skills: { type: Number, min: 0, max: 100, default: 25 },
+        experience: { type: Number, min: 0, max: 100, default: 25 },
+        education: { type: Number, min: 0, max: 100, default: 25 },
+        keywords: { type: Number, min: 0, max: 100, default: 25 }
+      },
+      constraints: {
+        mustHaveSkills: { type: [String], default: [] },
+        niceToHaveSkills: { type: [String], default: [] },
+        minYearsExperience: { type: Number, default: null }
+      },
+      version: {
+        type: Number,
+        default: 0
+      }
+    },
+    scoringConfigVersion: {
+      type: Number,
+      default: 0
     }
   },
   {

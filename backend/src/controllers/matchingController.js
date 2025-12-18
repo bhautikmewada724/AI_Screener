@@ -43,6 +43,8 @@ export const getRankedMatches = async (req, res, next) => {
       explanation: match.explanation,
       missingSkills: match.missingSkills,
       embeddingSimilarity: match.embeddingSimilarity,
+      scoreBreakdown: match.scoreBreakdown,
+      scoringConfigVersion: match.scoringConfigVersion,
       resumeSummary: resume.parsedData?.summary,
       resumeSkills: resume.parsedData?.skills
     }));

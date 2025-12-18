@@ -7,7 +7,9 @@ import {
   getJobById,
   updateJob,
   deleteJob,
-  getJobMatches
+  getJobMatches,
+  getScoringConfig,
+  updateScoringConfig
 } from '../controllers/jobController.js';
 
 const router = Router();
@@ -183,6 +185,33 @@ router.get('/jobs/:jobId', authenticate, authorizeRoles('hr', 'admin'), getJobBy
  *                 enum: [draft, open, on_hold, closed, archived]
  */
 router.put('/jobs/:jobId', authenticate, authorizeRoles('hr', 'admin'), updateJob);
+
+/**
+ * @openapi
+ * /hr/jobs/{jobId}/scoring-config:
+ *   get:
+ *     tags:
+ *       - HR Jobs
+ *     summary: Get scoring configuration for a job.
+ *     security:
+ *       - bearerAuth: []
+ *   put:
+ *     tags:
+ *       - HR Jobs
+ *     summary: Update scoring configuration for a job.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ */
+router
+  .route('/jobs/:jobId/scoring-config')
+  .get(authenticate, authorizeRoles('hr', 'admin'), getScoringConfig)
+  .put(authenticate, authorizeRoles('hr', 'admin'), updateScoringConfig);
 
 /**
  * @openapi

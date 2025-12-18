@@ -3,6 +3,7 @@ import type {
   ApplicationRecord,
   AuditEventRecord,
   JobDescription,
+  ScoringConfig,
   PaginatedResponse,
   ReviewNote
 } from '../types/api';
@@ -15,6 +16,18 @@ export const fetchJobs = (token?: string) => {
 
 export const fetchJobById = (jobId: string, token?: string) => {
   return apiRequest<JobDescription>(`/hr/jobs/${jobId}`, { token });
+};
+
+export const fetchScoringConfig = (jobId: string, token?: string) => {
+  return apiRequest<{ scoringConfig: ScoringConfig }>(`/hr/jobs/${jobId}/scoring-config`, { token });
+};
+
+export const updateScoringConfig = (jobId: string, payload: ScoringConfig, token?: string) => {
+  return apiRequest<{ scoringConfig: ScoringConfig }>(`/hr/jobs/${jobId}/scoring-config`, {
+    method: 'PUT',
+    token,
+    body: JSON.stringify(payload)
+  });
 };
 
 export const fetchReviewQueue = (params: { jobId: string; status?: string; page?: number; limit?: number }, token?: string) => {

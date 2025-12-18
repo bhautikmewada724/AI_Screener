@@ -39,7 +39,7 @@ test('validateResumeFile rejects oversized file', () => {
 });
 
 test('rate limit defaults are configured', () => {
-  assert.equal(LOGIN_RATE_LIMIT_MAX, 5);
+  assert.equal(LOGIN_RATE_LIMIT_MAX, 10);
   assert.equal(LOGIN_RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000);
   assert.equal(REGISTER_RATE_LIMIT_MAX, 5);
   assert.equal(REGISTER_RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000);

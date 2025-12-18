@@ -57,6 +57,14 @@ const applicationSchema = new Schema(
       type: Schema.Types.Mixed,
       default: null
     },
+    scoreBreakdown: {
+      type: Schema.Types.Mixed,
+      default: null
+    },
+    scoringConfigVersion: {
+      type: Number,
+      default: 0
+    },
     decisionReason: String,
     notesCount: {
       type: Number,

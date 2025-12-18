@@ -193,7 +193,9 @@ export const getScorePreview = async (req, res, next) => {
       resumeId,
       matchScore: matchResult.matchScore,
       matchedSkills: matchResult.matchedSkills,
-      explanation: matchResult.explanation
+      explanation: matchResult.explanation,
+      scoreBreakdown: matchResult.scoreBreakdown,
+      scoringConfigVersion: matchResult.scoringConfigVersion
     });
   } catch (error) {
     next(error);

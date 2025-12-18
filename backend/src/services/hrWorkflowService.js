@@ -5,6 +5,7 @@ import MatchResult from '../models/MatchResult.js';
 import Resume from '../models/Resume.js';
 import ReviewNote from '../models/ReviewNote.js';
 import { matchResumeToJob } from './aiService.js';
+import { mergeWithDefaults } from './scoringConfig.js';
 
 /**
  * Shared helpers for HR workflow controllers to avoid duplicating ownership checks
@@ -72,8 +73,18 @@ export const normalizeAiMatchResponse = (aiResponse = {}) => {
   const matchedSkills = pickField(aiResponse, 'matched_skills', 'matchedSkills', []) || [];
   const missingSkills = pickField(aiResponse, 'missing_critical_skills', 'missingCriticalSkills', []) || [];
   const embeddingSimilarity = pickField(aiResponse, 'embedding_similarity', 'embeddingSimilarity', 0);
+  const scoreBreakdown = pickField(aiResponse, 'score_breakdown', 'scoreBreakdown', null);
+  const scoringConfigVersion = pickField(aiResponse, 'scoring_config_version', 'scoringConfigVersion', null);
+  const missingMustHaveSkills = pickField(aiResponse, 'missing_must_have_skills', 'missingMustHaveSkills', []);
+  const missingNiceToHaveSkills = pickField(
+    aiResponse,
+    'missing_nice_to_have_skills',
+    'missingNiceToHaveSkills',
+    []
+  );
+  const explainability = pickField(aiResponse, 'explanation', 'explanation', {}) || {};
 
-  let explanation = aiResponse.explanation;
+  let explanation = explainability;
   if (!explanation || typeof explanation !== 'object') {
     explanation = {};
   } else {
@@ -92,13 +103,21 @@ export const normalizeAiMatchResponse = (aiResponse = {}) => {
   if (!explanation.source) {
     explanation.source = 'ai-service';
   }
+  if (!explanation.missingMustHaveSkills && Array.isArray(missingMustHaveSkills)) {
+    explanation.missingMustHaveSkills = missingMustHaveSkills;
+  }
+  if (!explanation.missingNiceToHaveSkills && Array.isArray(missingNiceToHaveSkills)) {
+    explanation.missingNiceToHaveSkills = missingNiceToHaveSkills;
+  }
 
   return {
     matchScore,
     matchedSkills,
     missingSkills,
     embeddingSimilarity,
-    explanation
+    explanation,
+    scoreBreakdown,
+    scoringConfigVersion
   };
 };
 
@@ -113,14 +132,22 @@ export const ensureMatchResult = async ({ job, resume, forceRefresh = false }) =
     }
   }
 
+  const scoringConfig = mergeWithDefaults(job.scoringConfig || {});
   const aiResponse = await matchResumeToJob({
     resume_skills: resume.parsedData?.skills || [],
     job_required_skills: job.requiredSkills || [],
     resume_summary: resume.parsedData?.summary,
-    job_summary: job.description
+    job_summary: job.description,
+    scoring_config: scoringConfig,
+    scoring_config_version: job.scoringConfigVersion ?? scoringConfig.version ?? 0
   });
 
   const normalized = normalizeAiMatchResponse(aiResponse);
+  const scoringConfigVersion =
+    normalized.scoringConfigVersion ??
+    job.scoringConfigVersion ??
+    scoringConfig.version ??
+    0;
 
   const matchResult = await MatchResult.findOneAndUpdate(
     {
@@ -133,7 +160,9 @@ export const ensureMatchResult = async ({ job, resume, forceRefresh = false }) =
         matchedSkills: normalized.matchedSkills,
         missingSkills: normalized.missingSkills,
         embeddingSimilarity: normalized.embeddingSimilarity,
-        explanation: normalized.explanation
+        explanation: normalized.explanation,
+        scoreBreakdown: normalized.scoreBreakdown,
+        scoringConfigVersion
       }
     },
     {
@@ -164,6 +193,8 @@ export const refreshApplicationMatch = async (application) => {
   application.matchScore = matchResult.matchScore;
   application.matchedSkills = matchResult.matchedSkills;
   application.matchExplanation = matchResult.explanation;
+  application.scoreBreakdown = matchResult.scoreBreakdown;
+  application.scoringConfigVersion = matchResult.scoringConfigVersion;
   await application.save();
 
   return { application, matchResult };

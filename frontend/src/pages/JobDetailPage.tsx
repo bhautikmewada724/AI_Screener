@@ -9,12 +9,20 @@ import {
   fetchComments,
   fetchJobById,
   fetchReviewQueue,
+  fetchScoringConfig,
   refreshApplicationScore,
-  updateApplicationStatus
+  updateApplicationStatus,
+  updateScoringConfig
 } from '../api/hr';
 import { ApiError } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
-import type { ApplicationRecord } from '../types/api';
+import type {
+  ApplicationRecord,
+  ScoringConfig,
+  ScoreBreakdown,
+  ExplainabilityPayload,
+  EvidenceSnippet
+} from '../types/api';
 import { fetchJobMatches } from '../api/matching';
 import ResumeViewer from '../components/ResumeViewer';
 import CommentPanel from '../components/CommentPanel';
@@ -46,6 +54,8 @@ const JobDetailPage = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedApplication, setSelectedApplication] = useState<ApplicationRecord | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [scoringForm, setScoringForm] = useState<ScoringConfig | null>(null);
+  const [scoringMessage, setScoringMessage] = useState<string | null>(null);
 
   const jobQuery = useQuery({
     queryKey: ['job', jobId],
@@ -59,7 +69,19 @@ const JobDetailPage = () => {
     enabled: Boolean(jobId && token)
   });
 
+  const scoringConfigQuery = useQuery<{ scoringConfig: ScoringConfig }>({
+    queryKey: ['scoring-config', jobId],
+    queryFn: () => fetchScoringConfig(jobId, token),
+    enabled: Boolean(jobId && token)
+  });
+
   const applications = queueQuery.data?.data ?? [];
+
+  useEffect(() => {
+    if (scoringConfigQuery.data?.scoringConfig) {
+      setScoringForm(scoringConfigQuery.data.scoringConfig);
+    }
+  }, [scoringConfigQuery.data]);
 
   useEffect(() => {
     if (!selectedApplication && applications.length) {
@@ -101,6 +123,18 @@ const JobDetailPage = () => {
   const scoreMutation = useMutation({
     mutationFn: (applicationId: string) => refreshApplicationScore(applicationId, token),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['review-queue'] })
+  });
+
+  const scoringConfigMutation = useMutation({
+    mutationFn: (payload: ScoringConfig) => updateScoringConfig(jobId, payload, token),
+    onSuccess: (data: { scoringConfig: ScoringConfig }) => {
+      setScoringForm(data.scoringConfig);
+      setScoringMessage('Scoring config updated.');
+      queryClient.invalidateQueries({ queryKey: ['scoring-config', jobId] });
+    },
+    onError: (error: Error) => {
+      setScoringMessage(error.message || 'Failed to update scoring config.');
+    }
   });
 
   const commentMutation = useMutation({
@@ -170,12 +204,155 @@ const JobDetailPage = () => {
     [applications]
   );
 
+  const weightSum = useMemo(() => {
+    if (!scoringForm) return 0;
+    const { skills, experience, education, keywords } = scoringForm.weights;
+    return [skills, experience, education, keywords].reduce((sum, val) => sum + (Number(val) || 0), 0);
+  }, [scoringForm]);
+
+  const weightsValid = Math.round(weightSum) === 100;
+
+  const updateWeight = (key: keyof ScoringConfig['weights'], value: number) => {
+    if (!scoringForm) return;
+    setScoringForm({
+      ...scoringForm,
+      weights: { ...scoringForm.weights, [key]: value }
+    });
+  };
+
+  const updateConstraints = (key: keyof ScoringConfig['constraints'], value: any) => {
+    if (!scoringForm) return;
+    setScoringForm({
+      ...scoringForm,
+      constraints: { ...scoringForm.constraints, [key]: value }
+    });
+  };
+
+  const explainabilityData = useMemo(() => {
+    const raw = (selectedApplication?.matchExplanation || {}) as ExplainabilityPayload | Record<string, any>;
+    const breakdown: ScoreBreakdown | undefined =
+      selectedApplication?.scoreBreakdown ||
+      (raw && typeof raw === 'object' && (raw as any).score_breakdown) ||
+      undefined;
+    return {
+      matchedSkills: raw?.matched_skills || selectedApplication?.matchedSkills || [],
+      missingMust: raw?.missing_must_have_skills || [],
+      missingNice: raw?.missing_nice_to_have_skills || [],
+      evidence: raw?.evidence || [],
+      scoreBreakdown: breakdown,
+      scoringConfigVersion: selectedApplication?.scoringConfigVersion
+    };
+  }, [selectedApplication]);
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={pageTitle}
         subtitle="Manage the candidate pipeline, run AI scoring previews, and collaborate with reviewers."
       />
+
+      <section className="card space-y-4">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-brand-navy">Scoring Configuration</h2>
+            <p className="text-sm text-brand-ash">Adjust weights and constraints per job. Weights must sum to 100.</p>
+          </div>
+          <div className="text-sm text-brand-ash">
+            Version {scoringForm?.version ?? scoringConfigQuery.data?.scoringConfig.version ?? 0}
+          </div>
+        </div>
+        {scoringConfigQuery.isLoading && <p className="text-sm text-brand-ash">Loading scoring config…</p>}
+        {scoringConfigQuery.isError && (
+          <p className="text-sm text-rose-600">Failed to load scoring config. Try refreshing.</p>
+        )}
+        {scoringForm && (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                {(['skills', 'experience', 'education', 'keywords'] as const).map((key) => (
+                  <label key={key} className="flex flex-col gap-1 text-sm text-brand-navy">
+                    <span className="font-semibold capitalize">{key}</span>
+                    <input
+                      type="number"
+                      className="input"
+                      min={0}
+                      max={100}
+                      value={scoringForm.weights[key]}
+                      onChange={(e) => updateWeight(key, Number(e.target.value))}
+                    />
+                  </label>
+                ))}
+              </div>
+              <div className="text-sm text-brand-ash">
+                Weight sum: <strong>{Math.round(weightSum)}</strong> {weightsValid ? '(valid)' : '(must equal 100)'}
+              </div>
+            </div>
+            <div className="space-y-3">
+              <label className="flex flex-col gap-1 text-sm text-brand-navy">
+                <span className="font-semibold">Must-have skills (comma separated)</span>
+                <input
+                  type="text"
+                  className="input"
+                  value={scoringForm.constraints.mustHaveSkills.join(', ')}
+                  onChange={(e) =>
+                    updateConstraints(
+                      'mustHaveSkills',
+                      e.target.value
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                    )
+                  }
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm text-brand-navy">
+                <span className="font-semibold">Nice-to-have skills (comma separated)</span>
+                <input
+                  type="text"
+                  className="input"
+                  value={scoringForm.constraints.niceToHaveSkills.join(', ')}
+                  onChange={(e) =>
+                    updateConstraints(
+                      'niceToHaveSkills',
+                      e.target.value
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                    )
+                  }
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm text-brand-navy">
+                <span className="font-semibold">Min years experience</span>
+                <input
+                  type="number"
+                  className="input"
+                  min={0}
+                  value={scoringForm.constraints.minYearsExperience ?? ''}
+                  onChange={(e) =>
+                    updateConstraints(
+                      'minYearsExperience',
+                      e.target.value === '' ? null : Number(e.target.value)
+                    )
+                  }
+                />
+              </label>
+            </div>
+          </div>
+        )}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={!scoringForm || !weightsValid || scoringConfigMutation.isPending}
+            onClick={() => scoringForm && scoringConfigMutation.mutate(scoringForm)}
+          >
+            {scoringConfigMutation.isPending ? 'Saving…' : 'Save config'}
+          </button>
+          {scoringMessage && <span className="text-sm text-brand-ash">{scoringMessage}</span>}
+          {!weightsValid && <span className="text-sm text-rose-600">Weights must sum to 100.</span>}
+        </div>
+      </section>
 
       <div className="flex flex-wrap gap-2">
         {stageChips.map((chip) => (
@@ -470,6 +647,64 @@ const JobDetailPage = () => {
             />
           ) : (
             <p className="text-sm text-brand-ash">Select a candidate to preview their resume insights.</p>
+          )}
+
+          {selectedApplication && (
+            <div className="rounded-2xl border border-slate-200 p-4">
+              <div className="flex items-center justify-between">
+                <strong className="text-brand-navy">Explainability</strong>
+                <small className="text-brand-ash">
+                  Config v{explainabilityData.scoringConfigVersion ?? 'N/A'}
+                </small>
+              </div>
+              <div className="mt-3 grid gap-3 text-sm text-brand-navy">
+                <div>
+                  <span className="font-semibold">Matched skills:</span>{' '}
+                  {explainabilityData.matchedSkills?.length
+                    ? explainabilityData.matchedSkills.join(', ')
+                    : 'None'}
+                </div>
+                {explainabilityData.missingMust?.length ? (
+                  <div className="text-rose-600">
+                    <span className="font-semibold">Missing must-have:</span>{' '}
+                    {explainabilityData.missingMust.join(', ')}
+                  </div>
+                ) : null}
+                {explainabilityData.missingNice?.length ? (
+                  <div className="text-brand-ash">
+                    <span className="font-semibold">Missing nice-to-have:</span>{' '}
+                    {explainabilityData.missingNice.join(', ')}
+                  </div>
+                ) : null}
+                {explainabilityData.scoreBreakdown && (
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+                    {Object.entries(explainabilityData.scoreBreakdown)
+                      .filter(([key]) => key.endsWith('_score') || key === 'final_score')
+                      .map(([key, value]) => (
+                        <div key={key} className="rounded-xl bg-slate-100 px-3 py-2 text-xs">
+                          <div className="font-semibold uppercase tracking-wide text-brand-ash">{key.replace('_', ' ')}</div>
+                          <div className="text-brand-navy">{value as number}%</div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+                {explainabilityData.evidence?.length ? (
+                  <div className="space-y-2">
+                    <div className="font-semibold text-brand-navy">Evidence</div>
+                    {explainabilityData.evidence.slice(0, 3).map((item: EvidenceSnippet, idx: number) => (
+                      <div key={`${item.label}-${idx}`} className="rounded-xl bg-slate-50 p-2">
+                        <div className="flex items-center justify-between text-xs text-brand-ash">
+                          <span>{item.type}</span>
+                          {typeof item.confidence === 'number' && <span>Conf: {Math.round(item.confidence * 100)}%</span>}
+                        </div>
+                        <div className="text-sm font-semibold text-brand-navy">{item.label}</div>
+                        <div className="text-sm text-brand-ash">{item.snippet}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
           )}
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">

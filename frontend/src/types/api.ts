@@ -86,9 +86,11 @@ export interface ApplicationRecord {
   reviewStage?: string;
   matchScore: number;
   matchedSkills: string[];
-  matchExplanation?: MatchExplanation | string | null;
+  matchExplanation?: MatchExplanation | ExplainabilityPayload | string | null;
   missingSkills?: string[];
   embeddingSimilarity?: number;
+  scoringConfigVersion?: number;
+  scoreBreakdown?: ScoreBreakdown | null;
   decisionReason?: string;
   notesCount: number;
   createdAt: string;
@@ -101,6 +103,52 @@ export interface MatchExplanation {
   embeddingSimilarity?: number;
   source?: string;
   [key: string]: unknown;
+}
+
+export interface ScoringWeights {
+  skills: number;
+  experience: number;
+  education: number;
+  keywords: number;
+}
+
+export interface ScoringConstraints {
+  mustHaveSkills: string[];
+  niceToHaveSkills: string[];
+  minYearsExperience: number | null;
+}
+
+export interface ScoringConfig {
+  weights: ScoringWeights;
+  constraints: ScoringConstraints;
+  version?: number;
+}
+
+export interface ScoreBreakdown {
+  skills_score?: number;
+  experience_score?: number;
+  education_score?: number;
+  keywords_score?: number;
+  embeddings_score?: number;
+  location_score?: number;
+  final_score?: number;
+  weights?: Record<string, number>;
+}
+
+export interface EvidenceSnippet {
+  type: 'resume' | 'jd';
+  label: string;
+  snippet: string;
+  confidence?: number;
+}
+
+export interface ExplainabilityPayload {
+  matched_skills?: string[];
+  missing_must_have_skills?: string[];
+  missing_nice_to_have_skills?: string[];
+  evidence?: EvidenceSnippet[];
+  score_breakdown?: ScoreBreakdown;
+  model_metadata?: Record<string, string>;
 }
 
 export interface ReviewNote {
