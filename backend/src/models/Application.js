@@ -53,6 +53,12 @@ const applicationSchema = new Schema(
       type: [String],
       default: []
     },
+    source: {
+      type: String,
+      enum: ['candidate_applied', 'hr_sourced'],
+      default: 'candidate_applied',
+      index: true
+    },
     matchExplanation: {
       type: Schema.Types.Mixed,
       default: null

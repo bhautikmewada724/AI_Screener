@@ -2,8 +2,11 @@ import { Router } from 'express';
 
 import {
   addComment,
+  addCandidateToJob,
   getApplicationDetails,
+  getJobApplications,
   getJobReviewQueue,
+  getJobSuggestions,
   getScorePreview,
   listAuditTrail,
   listComments,
@@ -13,6 +16,105 @@ import {
 import { authenticate, authorizeRoles } from '../middlewares/authMiddleware.js';
 
 const router = Router();
+
+/**
+ * @openapi
+ * /hr/jobs/{jobId}/applications:
+ *   get:
+ *     tags:
+ *       - HR Workflows
+ *     summary: List applications for a job (Applicants only).
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: jobId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [applied, in_review, shortlisted, rejected, hired]
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Paginated list of applications for the job.
+ *   post:
+ *     tags:
+ *       - HR Workflows
+ *     summary: Add a suggested candidate to the job (creates application).
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: jobId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - candidateId
+ *               - resumeId
+ *             properties:
+ *               candidateId:
+ *                 type: string
+ *               resumeId:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Application created for the job.
+ */
+router
+  .route('/jobs/:jobId/applications')
+  .get(authenticate, authorizeRoles('hr', 'admin'), getJobApplications)
+  .post(authenticate, authorizeRoles('hr', 'admin'), addCandidateToJob);
+
+/**
+ * @openapi
+ * /hr/jobs/{jobId}/suggestions:
+ *   get:
+ *     tags:
+ *       - HR Workflows
+ *     summary: Suggested candidates who have not applied to the job.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: jobId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: minScore
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: refresh
+ *         schema:
+ *           type: boolean
+ *     responses:
+ *       200:
+ *         description: Suggested candidates excluding current applicants.
+ */
+router.get('/jobs/:jobId/suggestions', authenticate, authorizeRoles('hr', 'admin'), getJobSuggestions);
 
 /**
  * @openapi

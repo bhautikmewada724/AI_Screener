@@ -77,6 +77,8 @@ export interface CandidateProfile {
   role: UserRole;
 }
 
+export type ApplicationSource = 'candidate_applied' | 'hr_sourced';
+
 export interface ApplicationRecord {
   _id: string;
   jobId: string | JobDescription;
@@ -84,6 +86,7 @@ export interface ApplicationRecord {
   resumeId: ResumePayload;
   status: 'applied' | 'in_review' | 'shortlisted' | 'rejected' | 'hired';
   reviewStage?: string;
+  source?: ApplicationSource;
   matchScore: number;
   matchedSkills: string[];
   matchExplanation?: MatchExplanation | ExplainabilityPayload | string | null;
@@ -212,6 +215,22 @@ export interface PaginatedResponse<T> {
     limit: number;
     pages: number;
   };
+}
+
+export interface SuggestedCandidate {
+  matchId: string;
+  resumeId: string;
+  candidateId: string;
+  matchScore: number;
+  matchedSkills: string[];
+  explanation?: MatchExplanation | Record<string, unknown> | string;
+  missingSkills?: string[];
+  embeddingSimilarity?: number;
+  scoreBreakdown?: ScoreBreakdown | null;
+  scoringConfigVersion?: number;
+  resumeSummary?: string;
+  resumeSkills?: string[];
+  applied?: boolean;
 }
 
 

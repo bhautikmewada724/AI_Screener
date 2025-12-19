@@ -136,59 +136,59 @@
 
   /* Status chips */
   .status-badge {
-    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white;
+    @apply inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide;
   }
 
   .status-badge.applied {
-    @apply bg-sky-500;
+    @apply border-blue-200 bg-blue-50 text-blue-700;
   }
 
   .status-badge.in_review {
-    @apply bg-amber-400 text-slate-900;
+    @apply border-amber-200 bg-amber-50 text-amber-700;
   }
 
   .status-badge.shortlisted {
-    @apply bg-emerald-500;
+    @apply border-emerald-200 bg-emerald-50 text-emerald-700;
   }
 
   .status-badge.rejected {
-    @apply bg-rose-500;
+    @apply border-rose-200 bg-rose-50 text-rose-700;
   }
 
   .status-badge.hired {
-    @apply bg-violet-500;
+    @apply border-green-200 bg-green-50 text-green-700;
   }
 
   .status-badge.draft {
-    @apply bg-slate-400;
+    @apply border-slate-200 bg-slate-50 text-slate-700;
   }
 
   .status-badge.open {
-    @apply bg-emerald-500;
+    @apply border-emerald-200 bg-emerald-50 text-emerald-700;
   }
 
   .status-badge.on_hold {
-    @apply bg-amber-400 text-slate-900;
+    @apply border-amber-200 bg-amber-50 text-amber-700;
   }
 
   .status-badge.closed {
-    @apply bg-slate-500;
+    @apply border-slate-200 bg-slate-100 text-slate-700;
   }
 
   .status-badge.archived {
-    @apply bg-slate-700;
+    @apply border-slate-200 bg-slate-100 text-slate-700;
   }
 
   .status-badge.active {
-    @apply bg-emerald-500;
+    @apply border-emerald-200 bg-emerald-50 text-emerald-700;
   }
 
   .status-badge.inactive {
-    @apply bg-amber-400 text-slate-900;
+    @apply border-amber-200 bg-amber-50 text-amber-700;
   }
 
   .status-badge.banned {
-    @apply bg-rose-600;
+    @apply border-rose-200 bg-rose-50 text-rose-700;
   }
 
 

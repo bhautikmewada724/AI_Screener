@@ -28,20 +28,22 @@ const ResumeViewer = ({ resume, matchScore, highlightedSkills = [] }: ResumeView
   const highlightSet = useMemo(() => new Set(highlightedSkills.map((skill) => skill.toLowerCase())), [highlightedSkills]);
 
   return (
-    <div className="card bg-brand-navy text-white">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card-sm">
       <div className="flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
-        <h3 className="text-xl font-semibold">Resume Insights</h3>
-        {typeof matchScore === 'number' && <span className="text-3xl font-bold">{Math.round(matchScore * 100)}%</span>}
+        <h3 className="text-lg font-semibold text-brand-navy">Resume Insights</h3>
+        {typeof matchScore === 'number' && (
+          <span className="text-3xl font-bold text-brand-navy">{Math.round(matchScore * 100)}%</span>
+        )}
       </div>
 
       <div className="mt-4 flex flex-col gap-4 lg:flex-row">
-        <div className="flex snap-x gap-2 overflow-x-auto rounded-2xl bg-white/10 p-2 lg:flex-col lg:bg-transparent">
+        <div className="flex snap-x gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-2 lg:flex-col">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               className={clsx(
                 'rounded-xl px-4 py-2 text-sm font-medium transition-colors',
-                activeTab === tab.id ? 'bg-white text-brand-navy' : 'text-white/80 hover:bg-white/10'
+                activeTab === tab.id ? 'bg-indigo-600 text-white shadow-card-sm' : 'text-brand-navy hover:bg-indigo-50'
               )}
               onClick={() => setActiveTab(tab.id)}
             >
@@ -52,10 +54,10 @@ const ResumeViewer = ({ resume, matchScore, highlightedSkills = [] }: ResumeView
 
         <div className="flex-1">
           {activeTab === 'summary' && (
-            <section className="space-y-3">
-              <p className="text-white/90">{resume.parsedData?.summary || 'No summary available yet.'}</p>
+            <section className="space-y-3 text-brand-navy">
+              <p className="text-sm text-brand-ash">{resume.parsedData?.summary || 'No summary available yet.'}</p>
               {location && (
-                <p className="text-sm text-slate-200">
+                <p className="text-sm text-brand-navy">
                   <strong>Location:</strong> {location}
                 </p>
               )}
@@ -63,7 +65,7 @@ const ResumeViewer = ({ resume, matchScore, highlightedSkills = [] }: ResumeView
           )}
 
           {activeTab === 'skills' && (
-            <section className="space-y-3">
+            <section className="space-y-3 text-brand-navy">
               <strong>Skills</strong>
               <div className="flex flex-wrap gap-2">
                 {skills.length > 0 ? (
@@ -73,58 +75,58 @@ const ResumeViewer = ({ resume, matchScore, highlightedSkills = [] }: ResumeView
                       className={clsx(
                         'rounded-full px-3 py-1 text-xs font-semibold',
                         highlightSet.has(skill.toLowerCase())
-                          ? 'bg-amber-300 text-brand-navy'
-                          : 'bg-white/10 text-white'
+                          ? 'bg-indigo-100 text-indigo-800 ring-1 ring-indigo-200'
+                          : 'bg-slate-100 text-brand-navy'
                       )}
                     >
                       {skill}
                     </span>
                   ))
                 ) : (
-                  <small className="text-white/70">Awaiting parsed skill data.</small>
+                  <small className="text-brand-ash">Awaiting parsed skill data.</small>
                 )}
               </div>
             </section>
           )}
 
           {activeTab === 'experience' && (
-            <section className="space-y-3">
+            <section className="space-y-3 text-brand-navy">
               <strong>Experience</strong>
               <div className="grid gap-3">
                 {experiences.length > 0 ? (
                   experiences.map((experience, index) => (
-                    <div key={`${experience.company}-${index}`} className="rounded-2xl bg-white/10 p-4">
+                    <div key={`${experience.company}-${index}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <div className="font-semibold">{experience.role}</div>
-                      <div className="text-sm text-white/80">{experience.company}</div>
-                      <small className="text-white/60">
+                      <div className="text-sm text-brand-ash">{experience.company}</div>
+                      <small className="text-xs text-brand-ash">
                         {[experience.startDate, experience.endDate].filter(Boolean).join(' – ')}
                       </small>
                       {experience.description && (
-                        <p className="mt-2 text-sm text-white/80">{experience.description}</p>
+                        <p className="mt-2 text-sm text-brand-navy">{experience.description}</p>
                       )}
                     </div>
                   ))
                 ) : (
-                  <small className="text-white/70">Experience history not parsed.</small>
+                  <small className="text-brand-ash">Experience history not parsed.</small>
                 )}
               </div>
             </section>
           )}
 
           {activeTab === 'education' && (
-            <section className="space-y-3">
+            <section className="space-y-3 text-brand-navy">
               <strong>Education</strong>
               <div className="grid gap-3">
                 {education.length > 0 ? (
                   education.map((record, index) => (
-                    <div key={`${record.institution}-${index}`} className="rounded-2xl bg-white/10 p-4">
+                    <div key={`${record.institution}-${index}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <div className="font-semibold">{record.degree || 'Program'}</div>
-                      <div className="text-sm text-white/80">{record.institution}</div>
-                      {record.year && <small className="text-white/60">Class of {record.year}</small>}
+                      <div className="text-sm text-brand-ash">{record.institution}</div>
+                      {record.year && <small className="text-xs text-brand-ash">Class of {record.year}</small>}
                     </div>
                   ))
                 ) : (
-                  <small className="text-white/70">Education history not provided.</small>
+                  <small className="text-brand-ash">Education history not provided.</small>
                 )}
               </div>
             </section>
