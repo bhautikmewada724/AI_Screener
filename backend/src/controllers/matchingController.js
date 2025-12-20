@@ -69,7 +69,8 @@ export const simulateMatch = async (req, res, next) => {
       return res.status(404).json({ message: 'Job or resume not found.' });
     }
 
-    // NOTE: This endpoint intentionally uses the local heuristic service as a sandbox.
+    // NOTE: This endpoint intentionally uses the local heuristic service as a sandbox
+    // and is not used by HR production flows.
     const match = await scoreCandidateForJob({ job, resume, forceRefresh: true });
 
     res.json({

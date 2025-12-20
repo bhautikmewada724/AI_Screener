@@ -3,6 +3,7 @@ import type {
   ApplicationRecord,
   AuditEventRecord,
   JobDescription,
+  JobCandidatesResponse,
   ScoringConfig,
   PaginatedResponse,
   ReviewNote,
@@ -68,6 +69,27 @@ export const addCandidateToJob = (
     method: 'POST',
     token,
     body: JSON.stringify(payload)
+  });
+};
+
+export const fetchJobCandidates = (
+  jobId: string,
+  token?: string,
+  options?: { minScore?: number; limit?: number; refresh?: boolean }
+) => {
+  const path = withQuery(`/hr/jobs/${jobId}/candidates`, {
+    minScore: options?.minScore,
+    limit: options?.limit,
+    refresh: options?.refresh ? 'true' : undefined
+  });
+  return apiRequest<JobCandidatesResponse>(path, { token });
+};
+
+export const recomputeMatches = (jobId: string, token?: string, payload?: { limit?: number }) => {
+  return apiRequest(`/hr/jobs/${jobId}/recompute-matches`, {
+    method: 'POST',
+    token,
+    body: payload ? JSON.stringify(payload) : undefined
   });
 };
 

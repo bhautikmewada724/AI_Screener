@@ -16,6 +16,11 @@ const matchResultSchema = new Schema(
       required: true,
       index: true
     },
+    candidateId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      index: true
+    },
     matchScore: {
       type: Number,
       required: true,
@@ -60,6 +65,7 @@ const matchResultSchema = new Schema(
 );
 
 matchResultSchema.index({ resumeId: 1, jobId: 1 }, { unique: true });
+matchResultSchema.index({ jobId: 1, candidateId: 1 });
 
 const MatchResult =
   mongoose.models.MatchResult || mongoose.model('MatchResult', matchResultSchema);

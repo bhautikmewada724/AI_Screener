@@ -233,4 +233,14 @@ export interface SuggestedCandidate {
   applied?: boolean;
 }
 
+export interface JobCandidatesResponse {
+  jobId: string;
+  config: {
+    version: number;
+    source?: string;
+  };
+  applied: ApplicationRecord[];
+  suggested: SuggestedCandidate[];
+}
+
 

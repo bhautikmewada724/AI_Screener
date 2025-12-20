@@ -8,7 +8,9 @@ import {
   ensureMatchResult,
   fetchApplicationWithJob,
   fetchJobWithOwnership,
+  getJobCandidates,
   recordAuditEvent,
+  recomputeMatchesForJob,
   refreshApplicationMatch
 } from '../services/hrWorkflowService.js';
 import { assertValidTransition } from '../services/applicationStatusRules.js';
@@ -224,53 +226,44 @@ export const getJobSuggestions = async (req, res, next) => {
     const { minScore = 0, limit = 10 } = req.query;
     const refresh = req.query.refresh === 'true';
     const job = await fetchJobWithOwnership(req.params.jobId, req.user);
-    const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 50);
-
-    const appliedCandidates = new Set(
-      (
-        await Application.find({ jobId: job._id })
-          .select('candidateId')
-          .lean()
-      ).map((app) => String(app.candidateId))
-    );
-
-    const resumes = await Resume.find({ status: 'parsed' }).sort({ createdAt: -1 });
-    const matches = [];
-
-    for (const resume of resumes) {
-      if (appliedCandidates.has(String(resume.userId))) {
-        continue;
-      }
-
-      try {
-        const match = await ensureMatchResult({ job, resume, forceRefresh: refresh });
-        if (match.matchScore >= Number(minScore)) {
-          matches.push({ match, resume });
-        }
-      } catch (error) {
-        console.error('Failed to score candidate for suggestions:', error.message);
-      }
-    }
-
-    const sorted = matches.sort((a, b) => b.match.matchScore - a.match.matchScore).slice(0, safeLimit);
-
-    return res.json({
-      data: sorted.map(({ match, resume }) => ({
-        matchId: match._id,
-        resumeId: resume._id,
-        candidateId: resume.userId,
-        matchScore: match.matchScore,
-        matchedSkills: match.matchedSkills,
-        explanation: match.explanation,
-        missingSkills: match.missingSkills,
-        embeddingSimilarity: match.embeddingSimilarity,
-        scoreBreakdown: match.scoreBreakdown,
-        scoringConfigVersion: match.scoringConfigVersion,
-        resumeSummary: resume.parsedData?.summary,
-        resumeSkills: resume.parsedData?.skills,
-        applied: false
-      }))
+    const { suggested } = await getJobCandidates({
+      job,
+      minScore: Number(minScore) || 0,
+      limit,
+      refresh
     });
+
+    return res.json({ data: suggested });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getJobCandidatesHandler = async (req, res, next) => {
+  try {
+    const { minScore = 0, limit = 10 } = req.query;
+    const refresh = req.query.refresh === 'true';
+    const job = await fetchJobWithOwnership(req.params.jobId, req.user);
+
+    const payload = await getJobCandidates({
+      job,
+      minScore: Number(minScore) || 0,
+      limit,
+      refresh
+    });
+
+    return res.json(payload);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const recomputeMatches = async (req, res, next) => {
+  try {
+    const job = await fetchJobWithOwnership(req.params.jobId, req.user);
+    const limit = req.body?.limit || req.query?.limit || 200;
+    const result = await recomputeMatchesForJob({ job, limit });
+    return res.json(result);
   } catch (error) {
     next(error);
   }

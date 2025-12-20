@@ -128,6 +128,10 @@ export const ensureMatchResult = async ({ job, resume, forceRefresh = false }) =
       resumeId: resume._id
     });
     if (existing) {
+      if (!existing.candidateId && resume?.userId) {
+        existing.candidateId = resume.userId;
+        await existing.save();
+      }
       return existing;
     }
   }
@@ -156,6 +160,7 @@ export const ensureMatchResult = async ({ job, resume, forceRefresh = false }) =
     },
     {
       $set: {
+        candidateId: resume.userId || resume.owner,
         matchScore: normalized.matchScore,
         matchedSkills: normalized.matchedSkills,
         missingSkills: normalized.missingSkills,
@@ -234,6 +239,118 @@ export const buildQueueQuery = ({ jobId, status, orgId }) => {
     query.status = status;
   }
   return query;
+};
+
+const clampLimit = (value, { min = 1, max = 50, fallback = 10 } = {}) => {
+  const asNumber = Number(value);
+  if (Number.isNaN(asNumber)) return fallback;
+  return Math.min(Math.max(asNumber, min), max);
+};
+
+const toStringId = (value) => (typeof value === 'string' ? value : value?.toString?.());
+
+export const recomputeMatchesForJob = async ({ job, limit = 200 }) => {
+  const cappedLimit = clampLimit(limit, { min: 1, max: 500, fallback: 200 });
+  const resumes = await Resume.find({ status: 'parsed' }).sort({ createdAt: -1 }).limit(cappedLimit);
+
+  let recomputedCount = 0;
+  const failed = [];
+
+  for (const resume of resumes) {
+    try {
+      await ensureMatchResult({ job, resume, forceRefresh: true });
+      recomputedCount += 1;
+    } catch (error) {
+      console.error('Failed to recompute match result', {
+        jobId: job._id,
+        resumeId: resume._id,
+        error: error.message
+      });
+      failed.push(String(resume._id));
+    }
+  }
+
+  return { recomputedCount, failedCount: failed.length, failedResumeIds: failed };
+};
+
+export const getJobCandidates = async ({ job, minScore = 0, limit = 10, refresh = false }) => {
+  const safeLimit = clampLimit(limit, { min: 1, max: 50, fallback: 10 });
+  const safeMinScore = Number(minScore) || 0;
+
+  const applications = await Application.find({ jobId: job._id })
+    .sort({ matchScore: -1, createdAt: 1 })
+    .populate('candidateId', 'name email role')
+    .populate('resumeId', 'parsedData status originalFileName');
+
+  const appliedCandidateIds = new Set(
+    applications.map((app) => toStringId(app.candidateId?._id || app.candidateId)).filter(Boolean)
+  );
+
+  if (refresh) {
+    await recomputeMatchesForJob({ job });
+  }
+
+  const matchResults = await MatchResult.find({
+    jobId: job._id,
+    matchScore: { $gte: safeMinScore }
+  });
+
+  const resumeIds = matchResults.map((match) => match.resumeId).filter(Boolean);
+  const resumes = await Resume.find({ _id: { $in: resumeIds } }).select(
+    'userId parsedData status originalFileName createdAt'
+  );
+  const resumeById = new Map(resumes.map((resume) => [toStringId(resume._id), resume]));
+
+  const bestByCandidate = new Map();
+
+  for (const match of matchResults) {
+    const resume = resumeById.get(toStringId(match.resumeId));
+    const candidateId = toStringId(match.candidateId || resume?.userId);
+    if (!candidateId || appliedCandidateIds.has(candidateId)) {
+      continue;
+    }
+
+    const existing = bestByCandidate.get(candidateId);
+    if (!existing || match.matchScore > existing.match.matchScore) {
+      bestByCandidate.set(candidateId, { match, resume });
+    }
+  }
+
+  const suggested = Array.from(bestByCandidate.values())
+    .sort((a, b) => b.match.matchScore - a.match.matchScore)
+    .slice(0, safeLimit)
+    .map(({ match, resume }) => {
+      const candidateId = toStringId(match.candidateId || resume?.userId);
+      const resumeId = toStringId(match.resumeId);
+      return {
+        matchId: match._id,
+        resumeId,
+        candidateId,
+        matchScore: match.matchScore,
+        matchedSkills: match.matchedSkills,
+        missingSkills: match.missingSkills,
+        embeddingSimilarity: match.embeddingSimilarity,
+        explanation: match.explanation,
+        scoreBreakdown: match.scoreBreakdown,
+        scoringConfigVersion: match.scoringConfigVersion,
+        resumeSummary: resume?.parsedData?.summary,
+        resumeSkills: resume?.parsedData?.skills,
+        applied: false
+      };
+    });
+
+  const mergedConfig = mergeWithDefaults(job.scoringConfig || {});
+  const version = job.scoringConfigVersion ?? mergedConfig.version ?? 0;
+
+  return {
+    jobId: job._id,
+    config: {
+      version,
+      source: 'job.scoringConfig'
+    },
+    applied: applications,
+    suggested
+  };
 };
 
 

@@ -5,11 +5,13 @@ import {
   addCandidateToJob,
   getApplicationDetails,
   getJobApplications,
+  getJobCandidatesHandler,
   getJobReviewQueue,
   getJobSuggestions,
   getScorePreview,
   listAuditTrail,
   listComments,
+  recomputeMatches,
   refreshScore,
   updateApplicationStatus
 } from '../controllers/hrWorkflowController.js';
@@ -82,6 +84,21 @@ router
   .route('/jobs/:jobId/applications')
   .get(authenticate, authorizeRoles('hr', 'admin'), getJobApplications)
   .post(authenticate, authorizeRoles('hr', 'admin'), addCandidateToJob);
+
+/**
+ * Canonical endpoint returning applied + suggested candidates for a job.
+ */
+router.get('/jobs/:jobId/candidates', authenticate, authorizeRoles('hr', 'admin'), getJobCandidatesHandler);
+
+/**
+ * Trigger recomputation of match results after scoring config updates.
+ */
+router.post(
+  '/jobs/:jobId/recompute-matches',
+  authenticate,
+  authorizeRoles('hr', 'admin'),
+  recomputeMatches
+);
 
 /**
  * @openapi

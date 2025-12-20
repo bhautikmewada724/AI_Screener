@@ -6,11 +6,11 @@ import clsx from 'clsx';
 import {
   createComment,
   addCandidateToJob,
-  fetchJobApplications,
+  fetchJobCandidates,
   fetchAuditTrail,
   fetchComments,
   fetchJobById,
-  fetchJobSuggestions,
+  recomputeMatches,
   fetchScoringConfig,
   refreshApplicationScore,
   updateApplicationStatus,
@@ -297,26 +297,23 @@ const JobDetailPage = () => {
     enabled: Boolean(jobId && token)
   });
 
-  const applicationsQuery = useQuery({
-    queryKey: ['job-applications', jobId, statusFilter],
-    queryFn: () => fetchJobApplications({ jobId, status: statusFilter || undefined, limit: 100 }, token),
-    enabled: Boolean(jobId && token)
-  });
-
   const scoringConfigQuery = useQuery<{ scoringConfig: ScoringConfig }>({
     queryKey: ['scoring-config', jobId],
     queryFn: () => fetchScoringConfig(jobId, token),
     enabled: Boolean(jobId && token)
   });
 
-  const suggestionsQuery = useQuery({
-    queryKey: ['job-suggestions', jobId],
-    queryFn: () => fetchJobSuggestions(jobId, token, { limit: 10 }),
+  const candidatesQuery = useQuery({
+    queryKey: ['job-candidates', jobId],
+    queryFn: () => fetchJobCandidates(jobId, token),
     enabled: Boolean(jobId && token)
   });
 
-  const applications = applicationsQuery.data?.data ?? [];
-  const suggestions = suggestionsQuery.data?.data ?? [];
+  const appliedCandidates = candidatesQuery.data?.applied ?? [];
+  const applications = statusFilter
+    ? appliedCandidates.filter((application) => application.status === statusFilter)
+    : appliedCandidates;
+  const suggestions = candidatesQuery.data?.suggested ?? [];
   const selectedApplication = selectedItem?.kind === 'applicant' ? selectedItem.application : null;
   const selectedSuggestion = selectedItem?.kind === 'suggested' ? selectedItem.suggestion : null;
   const job = jobQuery.data;
@@ -398,7 +395,7 @@ const JobDetailPage = () => {
     mutationFn: (payload: { applicationId: string; status: string; reviewStage?: string; decisionReason?: string }) =>
       updateApplicationStatus(payload.applicationId, payload, token),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['job-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['job-candidates', jobId] });
       queryClient.invalidateQueries({ queryKey: ['audit', variables.applicationId] });
       setStatusError(null);
     },
@@ -409,14 +406,34 @@ const JobDetailPage = () => {
 
   const scoreMutation = useMutation({
     mutationFn: (applicationId: string) => refreshApplicationScore(applicationId, token),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['job-applications'] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['job-candidates', jobId] })
+  });
+
+  const recomputeMatchesMutation = useMutation({
+    mutationFn: () => recomputeMatches(jobId, token),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['job-candidates', jobId] });
+    }
   });
 
   const scoringConfigMutation = useMutation({
     mutationFn: (payload: ScoringConfig) => updateScoringConfig(jobId, payload, token),
     onSuccess: (data: { scoringConfig: ScoringConfig }) => {
       setScoringForm(data.scoringConfig);
-      setScoringMessage('Scoring config updated.');
+      setScoringMessage('Scoring config updated. Recomputing matches…');
+      recomputeMatchesMutation.mutate(undefined, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ['job-candidates', jobId] });
+          setScoringMessage('Scoring config updated and matches recomputed.');
+        },
+        onError: (error: Error) => {
+          setScoringMessage(
+            error.message
+              ? `Config saved but failed to recompute matches: ${error.message}`
+              : 'Config saved but failed to recompute matches.'
+          );
+        }
+      });
       queryClient.invalidateQueries({ queryKey: ['scoring-config', jobId] });
     },
     onError: (error: Error) => {
@@ -427,8 +444,7 @@ const JobDetailPage = () => {
   const addCandidateMutation = useMutation({
     mutationFn: (payload: { candidateId: string; resumeId: string }) => addCandidateToJob(jobId, payload, token),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['job-applications'] });
-      queryClient.invalidateQueries({ queryKey: ['job-suggestions'] });
+      queryClient.invalidateQueries({ queryKey: ['job-candidates', jobId] });
       if (data?.application) {
         setSelectedItem({ kind: 'applicant', application: data.application });
       }
@@ -462,6 +478,18 @@ const JobDetailPage = () => {
     statusMutation.mutate({ applicationId: target._id, status });
   };
 
+  const handleCandidatesRefresh = async (forceRefresh = false) => {
+    if (!jobId || !token) return;
+    try {
+      setSuggestionMessage(forceRefresh ? 'Refreshing suggestions…' : 'Refreshing candidates…');
+      const data = await fetchJobCandidates(jobId, token, { refresh: forceRefresh });
+      queryClient.setQueryData(['job-candidates', jobId], data);
+      setSuggestionMessage('Suggestions updated.');
+    } catch (error) {
+      setSuggestionMessage((error as Error).message || 'Failed to refresh suggestions.');
+    }
+  };
+
   const handleCommentSubmit = async (body: string, visibility: 'shared' | 'private') => {
     if (selectedItem?.kind !== 'applicant') return;
     await commentMutation.mutateAsync({ applicationId: selectedItem.application._id, body, visibility });
@@ -472,14 +500,14 @@ const JobDetailPage = () => {
 
   const candidateNameLookup = useMemo(() => {
     const lookup = new Map<string, string>();
-    applications.forEach((application) => {
+    appliedCandidates.forEach((application) => {
       const candidate = application.candidateId;
       if (candidate?._id) {
         lookup.set(candidate._id, candidate.name);
       }
     });
     return lookup;
-  }, [applications]);
+  }, [appliedCandidates]);
 
   const getCandidateLabel = (match: { candidateId: string; resumeSummary?: string }) => {
     const knownName = candidateNameLookup.get(match.candidateId);
@@ -499,9 +527,9 @@ const JobDetailPage = () => {
     () =>
       STATUS_OPTIONS.map((status) => ({
         status,
-        count: applications.filter((application) => application.status === status).length
+        count: appliedCandidates.filter((application) => application.status === status).length
       })),
-    [applications]
+    [appliedCandidates]
   );
 
   const weightSum = useMemo(() => {
@@ -690,198 +718,14 @@ const JobDetailPage = () => {
 
       <section className="grid gap-6 xl:grid-cols-[3fr_2fr]">
         <div className="space-y-6">
-          <section className="card space-y-4">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="space-y-1">
-                <h2 className="text-xl font-semibold text-brand-navy">Suggested Candidates (Not Applied)</h2>
-                <p className="text-sm text-brand-ash">
-                  Top matches from the resume pool. Add to job to create an application before moving stages.
-                </p>
-                {candidateApplicationMessage && (
-                  <p className="text-xs font-medium text-slate-600">{candidateApplicationMessage}</p>
-                )}
-              </div>
-              <button
-                type="button"
-                className="btn bg-sky-50 text-brand-navy hover:bg-sky-100"
-                onClick={() => suggestionsQuery.refetch()}
-                disabled={suggestionsQuery.isFetching}
-              >
-                Refresh
-              </button>
-            </div>
-            {suggestionMessage && <p className="text-sm text-brand-ash">{suggestionMessage}</p>}
-            {suggestionsQuery.isLoading && <p className="text-sm text-brand-ash">Loading suggestions…</p>}
-            {suggestionsQuery.isError && (
-              <p className="text-sm text-rose-600">
-                {suggestionsQuery.error instanceof ApiError && suggestionsQuery.error.status >= 500
-                  ? 'AI matching is temporarily unavailable. You can still review candidates manually.'
-                  : `Failed to load suggestions: ${(suggestionsQuery.error as Error).message}`}
-              </p>
-            )}
-            {suggestionsQuery.data?.data?.length ? (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                {suggestionsQuery.data.data.map((match) => {
-                  const explanation = (typeof match.explanation === 'string'
-                    ? { notes: match.explanation }
-                    : (match.explanation as MatchExplanation)) || {};
-                  const missingSkills = Array.isArray(explanation.missingSkills) ? explanation.missingSkills : [];
-                  const matchedTags = Array.isArray(explanation.matchedTags) ? explanation.matchedTags : [];
-                  const matchedSkills = match.matchedSkills || [];
-                  const topMatchedSkills = matchedSkills.slice(0, 4);
-                  const extraMatchedCount = Math.max(matchedSkills.length - 4, 0);
-                  const missingRequired = missingSkills.slice(0, 2);
-                  const extraMissingCount = Math.max(missingSkills.length - 2, 0);
-                  const hasAdditionalDetail =
-                    missingSkills.length > 0 ||
-                    typeof explanation.experienceYears === 'number' ||
-                    Boolean(explanation.locationMatch) ||
-                    matchedTags.length > 0 ||
-                    Boolean(explanation.notes);
 
-                  return (
-                    <article
-                      key={match.matchId}
-                      className={clsx(
-                        'h-full overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 shadow-sm transition-shadow hover:shadow-md',
-                        selectedSuggestion?.matchId === match.matchId && 'ring-2 ring-indigo-200 ring-offset-1'
-                      )}
-                      onClick={() => setSelectedItem({ kind: 'suggested', suggestion: match })}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0 space-y-1">
-                          <div className="truncate text-lg font-semibold leading-tight text-brand-navy" title={getCandidateLabel(match)}>
-                            {getCandidateLabel(match)}
-                          </div>
-                          <p className="line-clamp-2 text-sm text-brand-ash">{match.resumeSummary || 'No summary available'}</p>
-                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
-                            Not Applied
-                          </span>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <div className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-700">
-                            {Math.round(match.matchScore * 100)}% Match
-                          </div>
-                          <small className="text-xs uppercase tracking-wide text-brand-ash">AI Match</small>
-                        </div>
-                      </div>
-
-                      <div className="mt-4">
-                        <small className="text-xs uppercase tracking-wide text-brand-ash">Matched skills</small>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {topMatchedSkills.map((skill) => (
-                            <span
-                              key={skill}
-                              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-brand-navy"
-                            >
-                              {skill}
-                            </span>
-                          ))}
-                          {extraMatchedCount > 0 && (
-                            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-brand-navy">
-                              +{extraMatchedCount}
-                            </span>
-                          )}
-                          {(!matchedSkills.length || !topMatchedSkills.length) && (
-                            <span className="text-sm text-brand-ash">Low overlap — review before adding.</span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="mt-3">
-                        {missingRequired.length ? (
-                          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-slate-800">
-                            Missing: {missingRequired.join(', ')}
-                            {extraMissingCount > 0 ? ` +${extraMissingCount}` : ''}
-                          </div>
-                        ) : (
-                          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-slate-800">
-                            Skills differ from this role — review before adding.
-                          </div>
-                        )}
-                      </div>
-
-                      {match.explanation && (
-                        <details className="mt-3 rounded-xl border border-slate-200 bg-white p-3 text-sm text-brand-navy">
-                          <summary className="cursor-pointer text-indigo-700 hover:text-indigo-800">Why this match?</summary>
-                          <div className="mt-2 space-y-2 text-brand-ash">
-                            {topMatchedSkills.length > 0 && (
-                              <p className="m-0">
-                                <strong>Matched:</strong> {topMatchedSkills.join(', ')}
-                                {extraMatchedCount > 0 ? ` +${extraMatchedCount}` : ''}
-                              </p>
-                            )}
-                            {missingRequired.length > 0 && (
-                              <p className="m-0">
-                                <strong>Missing:</strong> {missingRequired.join(', ')}
-                                {extraMissingCount > 0 ? ` +${extraMissingCount}` : ''}
-                              </p>
-                            )}
-                            {typeof explanation.experienceYears === 'number' && (
-                              <p className="m-0">
-                                <strong>Experience:</strong> {explanation.experienceYears.toFixed(1)} yrs
-                              </p>
-                            )}
-                            {matchedTags.length > 0 && (
-                              <p className="m-0">
-                                <strong>Tags:</strong> {matchedTags.join(', ')}
-                              </p>
-                            )}
-                            {explanation.notes && (
-                              <p className="m-0">
-                                <strong>Notes:</strong> {explanation.notes}
-                              </p>
-                            )}
-                            {!hasAdditionalDetail && <p className="m-0">No additional signals.</p>}
-                          </div>
-                        </details>
-                      )}
-                      <div className="mt-4 space-y-2">
-                        <button
-                          type="button"
-                          className="btn bg-indigo-600 text-white hover:bg-indigo-700"
-                          disabled={addCandidateMutation.isPending || jobFullyClosed}
-                          onClick={() => addCandidateMutation.mutate({ candidateId: match.candidateId, resumeId: match.resumeId })}
-                        >
-                          {addCandidateMutation.isPending ? 'Adding…' : 'Add to Job'}
-                        </button>
-                        <button
-                          type="button"
-                          className="text-left text-sm font-medium text-indigo-700 hover:text-indigo-800"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setSelectedItem({ kind: 'suggested', suggestion: match });
-                          }}
-                        >
-                          Preview
-                        </button>
-                        <div className="flex items-center justify-between text-xs text-brand-ash">
-                          <span>Adds candidate to Applicants for this job.</span>
-                          {jobFullyClosed && <span className="text-rose-600">Job closed—adding disabled.</span>}
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            ) : (
-              !suggestionsQuery.isLoading && (
-                <p className="text-sm text-brand-ash">
-                  No suggested candidates yet. Refresh matching or adjust the job requirements to see new recommendations.
-                </p>
-              )
-            )}
-          </section>
-
-          <section className="card space-y-4">
+        <section className="card space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <strong className="text-brand-navy">Candidate Review Queue (Applicants)</strong>
                 <p className="text-xs text-brand-ash">Only candidates who applied or were added to this job.</p>
               </div>
-              {applicationsQuery.isLoading && <small className="text-brand-ash">Loading…</small>}
+              {candidatesQuery.isLoading && <small className="text-brand-ash">Loading…</small>}
             </div>
             <div className="hidden lg:block">
               <div className="overflow-x-auto">
@@ -1023,12 +867,199 @@ const JobDetailPage = () => {
                 </article>
               ))}
             </div>
-            {!applicationsQuery.isLoading && applications.length === 0 && (
+            {!candidatesQuery.isLoading && applications.length === 0 && (
               <p className="text-sm text-brand-ash">
                 No applicants yet. They will appear once someone applies or you add a suggested candidate to this job.
               </p>
             )}
           </section>
+
+          <section className="card space-y-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="space-y-1">
+                <h2 className="text-xl font-semibold text-brand-navy">Suggested Candidates (Not Applied)</h2>
+                <p className="text-sm text-brand-ash">
+                  Top matches from the resume pool. Add to job to create an application before moving stages.
+                </p>
+                {candidateApplicationMessage && (
+                  <p className="text-xs font-medium text-slate-600">{candidateApplicationMessage}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                className="btn bg-sky-50 text-brand-navy hover:bg-sky-100"
+                onClick={() => handleCandidatesRefresh(true)}
+                disabled={candidatesQuery.isFetching || recomputeMatchesMutation.isPending}
+              >
+                Refresh
+              </button>
+            </div>
+            {suggestionMessage && <p className="text-sm text-brand-ash">{suggestionMessage}</p>}
+            {candidatesQuery.isLoading && <p className="text-sm text-brand-ash">Loading suggestions…</p>}
+            {candidatesQuery.isError && (
+              <p className="text-sm text-rose-600">
+                {candidatesQuery.error instanceof ApiError && candidatesQuery.error.status >= 500
+                  ? 'AI matching is temporarily unavailable. You can still review candidates manually.'
+                  : `Failed to load suggestions: ${(candidatesQuery.error as Error).message}`}
+              </p>
+            )}
+            {suggestions.length ? (
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                {suggestions.map((match) => {
+                  const explanation = (typeof match.explanation === 'string'
+                    ? { notes: match.explanation }
+                    : (match.explanation as MatchExplanation)) || {};
+                  const missingSkills = Array.isArray(explanation.missingSkills) ? explanation.missingSkills : [];
+                  const matchedTags = Array.isArray(explanation.matchedTags) ? explanation.matchedTags : [];
+                  const matchedSkills = match.matchedSkills || [];
+                  const topMatchedSkills = matchedSkills.slice(0, 4);
+                  const extraMatchedCount = Math.max(matchedSkills.length - 4, 0);
+                  const missingRequired = missingSkills.slice(0, 2);
+                  const extraMissingCount = Math.max(missingSkills.length - 2, 0);
+                  const hasAdditionalDetail =
+                    missingSkills.length > 0 ||
+                    typeof explanation.experienceYears === 'number' ||
+                    Boolean(explanation.locationMatch) ||
+                    matchedTags.length > 0 ||
+                    Boolean(explanation.notes);
+                    
+                  return (
+                    <article
+                      key={match.matchId}
+                      className={clsx(
+                        'h-full overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 shadow-sm transition-shadow hover:shadow-md',
+                        selectedSuggestion?.matchId === match.matchId && 'ring-2 ring-indigo-200 ring-offset-1'
+                      )}
+                      onClick={() => setSelectedItem({ kind: 'suggested', suggestion: match })}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 space-y-1">
+                          <div className="truncate text-lg font-semibold leading-tight text-brand-navy" title={getCandidateLabel(match)}>
+                            {getCandidateLabel(match)}
+                          </div>
+                          <p className="line-clamp-2 text-sm text-brand-ash">{match.resumeSummary || 'No summary available'}</p>
+                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
+                            Not Applied
+                          </span>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <div className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-700">
+                            {Math.round(match.matchScore * 100)}% Match
+                          </div>
+                          <small className="text-xs uppercase tracking-wide text-brand-ash">AI Match</small>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <small className="text-xs uppercase tracking-wide text-brand-ash">Matched skills</small>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {topMatchedSkills.map((skill) => (
+                            <span
+                              key={skill}
+                              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-brand-navy"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                          {extraMatchedCount > 0 && (
+                            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-brand-navy">
+                              +{extraMatchedCount}
+                            </span>
+                          )}
+                          {(!matchedSkills.length || !topMatchedSkills.length) && (
+                            <span className="text-sm text-brand-ash">Low overlap — review before adding.</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-3">
+                        {missingRequired.length ? (
+                          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-slate-800">
+                            Missing: {missingRequired.join(', ')}
+                            {extraMissingCount > 0 ? ` +${extraMissingCount}` : ''}
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-slate-800">
+                            Skills differ from this role — review before adding.
+                          </div>
+                        )}
+                      </div>
+
+                      {match.explanation && (
+                        <details className="mt-3 rounded-xl border border-slate-200 bg-white p-3 text-sm text-brand-navy">
+                          <summary className="cursor-pointer text-indigo-700 hover:text-indigo-800">Why this match?</summary>
+                          <div className="mt-2 space-y-2 text-brand-ash">
+                            {topMatchedSkills.length > 0 && (
+                              <p className="m-0">
+                                <strong>Matched:</strong> {topMatchedSkills.join(', ')}
+                                {extraMatchedCount > 0 ? ` +${extraMatchedCount}` : ''}
+                              </p>
+                            )}
+                            {missingRequired.length > 0 && (
+                              <p className="m-0">
+                                <strong>Missing:</strong> {missingRequired.join(', ')}
+                                {extraMissingCount > 0 ? ` +${extraMissingCount}` : ''}
+                              </p>
+                            )}
+                            {typeof explanation.experienceYears === 'number' && (
+                              <p className="m-0">
+                                <strong>Experience:</strong> {explanation.experienceYears.toFixed(1)} yrs
+                              </p>
+                            )}
+                            {matchedTags.length > 0 && (
+                              <p className="m-0">
+                                <strong>Tags:</strong> {matchedTags.join(', ')}
+                              </p>
+                            )}
+                            {explanation.notes && (
+                              <p className="m-0">
+                                <strong>Notes:</strong> {explanation.notes}
+                              </p>
+                            )}
+                            {!hasAdditionalDetail && <p className="m-0">No additional signals.</p>}
+                          </div>
+                        </details>
+                      )}
+                      <div className="mt-4 space-y-2">
+                        <button
+                          type="button"
+                          className="btn bg-indigo-600 text-white hover:bg-indigo-700"
+                          disabled={addCandidateMutation.isPending || jobFullyClosed}
+                          onClick={() => addCandidateMutation.mutate({ candidateId: match.candidateId, resumeId: match.resumeId })}
+                        >
+                          {addCandidateMutation.isPending ? 'Adding…' : 'Add to Job'}
+                        </button>
+                        <button
+                          type="button"
+                          className="text-left text-sm font-medium text-indigo-700 hover:text-indigo-800"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSelectedItem({ kind: 'suggested', suggestion: match });
+                          }}
+                        >
+                          Preview
+                        </button>
+                        <div className="flex items-center justify-between text-xs text-brand-ash">
+                          <span>Adds candidate to Applicants for this job.</span>
+                          {jobFullyClosed && <span className="text-rose-600">Job closed—adding disabled.</span>}
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              !candidatesQuery.isLoading && (
+                <p className="text-sm text-brand-ash">
+                  No suggested candidates yet. Refresh matching or adjust the job requirements to see new recommendations.
+                </p>
+              )
+            )}
+          </section>
+
+          
         </div>
 
         <section className="card space-y-4">
