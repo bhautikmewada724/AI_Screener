@@ -3,6 +3,7 @@ import JobDescription from '../models/JobDescription.js';
 import Recommendation from '../models/Recommendation.js';
 import Resume from '../models/Resume.js';
 import { getRecommendations } from './aiService.js';
+import { getEffectiveParsedData } from './resumeCorrectionService.js';
 
 const TTL_MINUTES = parseInt(process.env.RECOMMENDATION_TTL_MINUTES || '360', 10);
 const TTL_MS = TTL_MINUTES * 60 * 1000;
@@ -34,10 +35,12 @@ export const loadCandidateProfile = async (candidateId) => {
     .sort({ createdAt: -1 })
     .lean();
 
-  const skills = latestResume?.parsedData?.skills || [];
-  const location = latestResume?.parsedData?.location;
-  const embeddings = latestResume?.parsedData?.embeddings || [];
-  const summary = latestResume?.parsedData?.summary;
+  const parsedData = getEffectiveParsedData(latestResume);
+  const skills = parsedData?.skills || [];
+  const location = parsedData?.location;
+  const embeddings = parsedData?.embeddings || [];
+  const summary = parsedData?.summary;
+  const totalYearsExperience = parsedData?.totalYearsExperience;
 
   return {
     candidate: {
@@ -46,7 +49,8 @@ export const loadCandidateProfile = async (candidateId) => {
       preferred_locations: location ? [location] : [],
       embeddings,
       location,
-      summary
+      summary,
+      total_years_experience: totalYearsExperience
     },
     resume: latestResume
   };

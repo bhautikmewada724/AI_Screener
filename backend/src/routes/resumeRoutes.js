@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import { authenticate, authorizeRoles } from '../middlewares/authMiddleware.js';
-import { uploadResume, getResumeById, getMyResumes } from '../controllers/resumeController.js';
+import { uploadResume, getResumeById, getMyResumes, patchParsedData } from '../controllers/resumeController.js';
 import { resumeUpload } from '../config/multer.js';
 import { resumeUploadLimiter } from '../middlewares/rateLimiters.js';
 
@@ -60,6 +60,50 @@ router.post(
  *         description: Unauthorized.
  */
 router.get('/me', authenticate, authorizeRoles('candidate'), getMyResumes);
+
+/**
+ * @openapi
+ * /resume/{id}/parsedData:
+ *   patch:
+ *     tags:
+ *       - Resume
+ *     summary: Allow a candidate to submit corrections to parsed resume data.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               skills:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               totalYearsExperience:
+ *                 type: number
+ *               location:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Corrections saved.
+ *       400:
+ *         description: Invalid input.
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden.
+ *       404:
+ *         description: Resume not found.
+ */
+router.patch('/:id/parsedData', authenticate, authorizeRoles('candidate'), patchParsedData);
 
 /**
  * @openapi

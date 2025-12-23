@@ -30,7 +30,7 @@ const fetchApplicationsForJob = async ({ job, status, page = 1, limit = 20 }) =>
       .skip((safePage - 1) * safeLimit)
       .limit(safeLimit)
       .populate('candidateId', 'name email role')
-      .populate('resumeId', 'parsedData status originalFileName'),
+      .populate('resumeId', 'parsedData parsedDataCorrected isCorrected correctedAt status originalFileName'),
     Application.countDocuments(query)
   ]);
 

@@ -3,6 +3,10 @@ import { parseResume as parseResumeAI } from '../services/aiService.js';
 import { transformAiResumeToParsedData } from '../services/aiTransformers.js';
 import { validateResumeFile } from '../config/multer.js';
 import { scanFileForThreats } from '../utils/avScan.js';
+import {
+  buildCorrectionMetadata,
+  validateAndNormalizeCorrections
+} from '../services/resumeCorrectionService.js';
 
 export const uploadResume = async (req, res, next) => {
   try {
@@ -35,6 +39,8 @@ export const uploadResume = async (req, res, next) => {
       resume.status = 'parsed';
       resume.parsedAt = new Date();
       resume.parserVersion = 'ai-service/v1';
+      // Temporary debug logging to inspect parsed experience structure
+      console.log('[DEBUG] parsedData.experience', resume.parsedData?.experience);
       if (String(process.env.TRACE_MATCHING || '').toLowerCase() === 'true') {
         console.log('[TRACE] resume parsed on upload', {
           resumeId: resume._id,
@@ -84,6 +90,34 @@ export const getMyResumes = async (req, res, next) => {
     const resumes = await Resume.find({ userId: req.user.id }).sort({ createdAt: -1 });
     return res.json(resumes);
   } catch (error) {
+    next(error);
+  }
+};
+
+export const patchParsedData = async (req, res, next) => {
+  try {
+    const resume = await Resume.findById(req.params.id);
+
+    if (!resume) {
+      return res.status(404).json({ message: 'Resume not found.' });
+    }
+
+    if (resume.userId.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Forbidden.' });
+    }
+
+    const normalized = validateAndNormalizeCorrections(req.body || {});
+
+    resume.parsedDataCorrected = normalized;
+    Object.assign(resume, buildCorrectionMetadata());
+
+    await resume.save();
+
+    return res.json({ success: true, resume });
+  } catch (error) {
+    if (error?.status) {
+      return res.status(error.status).json({ message: error.message });
+    }
     next(error);
   }
 };

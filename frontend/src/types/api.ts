@@ -53,21 +53,27 @@ export interface ResumeExperience {
   endDate?: string;
 }
 
+export interface ParsedResumeData {
+  summary?: string;
+  skills?: string[];
+  experience?: ResumeExperience[];
+  education?: Array<{ institution?: string; degree?: string; year?: number }>;
+  location?: string;
+  warnings?: string[];
+  embeddings?: number[];
+  error?: string;
+  totalYearsExperience?: number;
+}
+
 export interface ResumePayload {
   _id: string;
   status: string;
   originalFileName?: string;
   createdAt?: string;
-  parsedData?: {
-    summary?: string;
-    skills?: string[];
-    experience?: ResumeExperience[];
-    education?: Array<{ institution?: string; degree?: string; year?: number }>;
-    location?: string;
-    warnings?: string[];
-    embeddings?: number[];
-    error?: string;
-  };
+  parsedData?: ParsedResumeData;
+  parsedDataCorrected?: ParsedResumeData;
+  isCorrected?: boolean;
+  correctedAt?: string;
 }
 
 export interface CandidateProfile {

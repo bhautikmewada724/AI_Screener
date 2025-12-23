@@ -8,6 +8,7 @@ import Resume from '../models/Resume.js';
 import ReviewNote from '../models/ReviewNote.js';
 import { matchResumeToJob } from './aiService.js';
 import { mergeWithDefaults } from './scoringConfig.js';
+import { getEffectiveParsedData } from './resumeCorrectionService.js';
 
 /**
  * Shared helpers for HR workflow controllers to avoid duplicating ownership checks
@@ -161,19 +162,20 @@ export const ensureMatchResult = async ({ job, resume, forceRefresh = false, req
   }
 
   const scoringConfig = mergeWithDefaults(job.scoringConfig || {});
-  const resumeSkills = Array.isArray(resume.parsedData?.skills) ? resume.parsedData.skills : [];
+  const parsedData = getEffectiveParsedData(resume);
+  const resumeSkills = Array.isArray(parsedData?.skills) ? parsedData.skills : [];
   const jobRequiredSkills = Array.isArray(job.requiredSkills) ? job.requiredSkills : [];
   const resumeTextParts = [];
-  if (resume.parsedData?.summary) resumeTextParts.push(resume.parsedData.summary);
+  if (parsedData?.summary) resumeTextParts.push(parsedData.summary);
   if (resumeSkills.length) resumeTextParts.push(resumeSkills.join(', '));
-  if (Array.isArray(resume.parsedData?.experience)) {
-    const expSummaries = resume.parsedData.experience
+  if (Array.isArray(parsedData?.experience)) {
+    const expSummaries = parsedData.experience
       .map((item) => [item.role, item.company, item.duration].filter(Boolean).join(' '))
       .filter(Boolean);
     if (expSummaries.length) resumeTextParts.push(expSummaries.join(' | '));
   }
-  if (Array.isArray(resume.parsedData?.education)) {
-    const eduSummaries = resume.parsedData.education
+  if (Array.isArray(parsedData?.education)) {
+    const eduSummaries = parsedData.education
       .map((item) => [item.institution, item.degree, item.graduationYear].filter(Boolean).join(' '))
       .filter(Boolean);
     if (eduSummaries.length) resumeTextParts.push(eduSummaries.join(' | '));
@@ -187,7 +189,7 @@ export const ensureMatchResult = async ({ job, resume, forceRefresh = false, req
       resumeSkills: resumeSkills,
       jobRequiredSkills,
       resumeSkillsCount: resumeSkills.length,
-      resumeSummaryLength: resume.parsedData?.summary ? resume.parsedData.summary.length : 0,
+      resumeSummaryLength: parsedData?.summary ? parsedData.summary.length : 0,
       resumeTextLength: resumeText.length,
       includeTrace: tracingEnabled,
       payloadKeys: ['resume_skills', 'job_required_skills', 'resume_summary', 'job_summary', 'scoring_config', 'scoring_config_version', 'include_trace']
@@ -196,7 +198,7 @@ export const ensureMatchResult = async ({ job, resume, forceRefresh = false, req
   const aiResponse = await matchResumeToJob({
     resume_skills: resumeSkills,
     job_required_skills: jobRequiredSkills,
-    resume_summary: resume.parsedData?.summary,
+    resume_summary: parsedData?.summary,
     resume_text: resumeText || undefined,
     job_summary: job.description,
     scoring_config: scoringConfig,
@@ -392,7 +394,7 @@ export const getJobCandidates = async ({ job, minScore = 0, limit = 10, refresh 
   const applications = await Application.find({ jobId: job._id })
     .sort({ matchScore: -1, createdAt: 1 })
     .populate('candidateId', 'name email role')
-    .populate('resumeId', 'parsedData status originalFileName');
+    .populate('resumeId', 'parsedData parsedDataCorrected isCorrected correctedAt status originalFileName');
 
   const appliedCandidateIds = new Set(
     applications.map((app) => toStringId(app.candidateId?._id || app.candidateId)).filter(Boolean)
@@ -409,7 +411,7 @@ export const getJobCandidates = async ({ job, minScore = 0, limit = 10, refresh 
 
   const resumeIds = matchResults.map((match) => match.resumeId).filter(Boolean);
   const resumes = await Resume.find({ _id: { $in: resumeIds } }).select(
-    'userId parsedData status originalFileName createdAt'
+    'userId parsedData parsedDataCorrected isCorrected correctedAt status originalFileName createdAt'
   );
   const resumeById = new Map(resumes.map((resume) => [toStringId(resume._id), resume]));
 
@@ -434,6 +436,7 @@ export const getJobCandidates = async ({ job, minScore = 0, limit = 10, refresh 
     .map(({ match, resume }) => {
       const candidateId = toStringId(match.candidateId || resume?.userId);
       const resumeId = toStringId(match.resumeId);
+      const parsedData = getEffectiveParsedData(resume);
       return {
         matchId: match._id,
         resumeId,
@@ -445,8 +448,8 @@ export const getJobCandidates = async ({ job, minScore = 0, limit = 10, refresh 
         explanation: match.explanation,
         scoreBreakdown: match.scoreBreakdown,
         scoringConfigVersion: match.scoringConfigVersion,
-        resumeSummary: resume?.parsedData?.summary,
-        resumeSkills: resume?.parsedData?.skills,
+        resumeSummary: parsedData?.summary,
+        resumeSkills: parsedData?.skills,
         trace: tracingEnabled ? match.trace : undefined,
         applied: false
       };
