@@ -66,6 +66,7 @@ This document freezes the request/response schemas that the Node backend and Rea
 | `job_required_skills` | `string[]` | ✅ | Pulled from `JobDescription.requiredSkills`. |
 | `resume_summary` | `string \| null` | ⚪ | Provides additional context for LLM scoring. |
 | `job_summary` | `string \| null` | ⚪ | Usually the raw JD description today. |
+| `include_trace` | `boolean` | ⚪ | When true, FastAPI returns a diagnostic `trace` block (optional, safe default=false). |
 | (future) `resume_embeddings`, `job_embeddings` | Extensible | Can be added later; backend will pass through once supported. |
 
 ### Response (`MatchResponse`)
@@ -77,10 +78,13 @@ This document freezes the request/response schemas that the Node backend and Rea
 | `missing_critical_skills` | `string[]` | ⚪ | Saved to `MatchResult.missingSkills` and surfaced throughout review queues. |
 | `embedding_similarity` | `number (0-1)` | ⚪ | Stored for diagnostics and explainability UIs. |
 | `explanation` | `object` | ⚪ | Structured metadata including `components.skills/embeddings/experience/location`, per-component weights, normalized scores, and the same summary string returned in `notes`. Any new fields should be additive. |
+| `trace` | `object \| null` | ⚪ | Present only when `include_trace=true`. Contains extraction/skills/score breakdown without raw resume text (redacted preview + hashes only). |
 
 > **Production flows:** All persisted scores now originate from `/ai/match`. The Node heuristic matcher is available solely via `/matching/simulate` for experimentation.
 
 > **Scoring breakdown:** The FastAPI service currently weighs skills (0.4), embeddings (0.3), experience (0.2), and location (0.1). Each component is clamped to [0, 1] and reported inside the `explanation.components` object so future tuning can be audited easily.
+
+> **Tracing:** Set `TRACE_MATCHING=true` in the Node backend to request traces. The gateway adds `include_trace=true` and a request id header; the AI service returns a `trace` envelope containing redacted previews, lengths, coverage metrics, and per-component scores. When the flag is off, responses remain unchanged.
 
 ---
 

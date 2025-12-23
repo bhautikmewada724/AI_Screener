@@ -31,8 +31,8 @@ export const parseJobDescription = async (payload) => {
   return data;
 };
 
-export const matchResumeToJob = async (payload) => {
-  const { data } = await getClient().post('/ai/match', payload);
+export const matchResumeToJob = async (payload, options = {}) => {
+  const { data } = await getClient().post('/ai/match', payload, options);
   return data;
 };
 

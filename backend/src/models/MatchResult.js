@@ -53,6 +53,10 @@ const matchResultSchema = new Schema(
       type: Number,
       default: 0
     },
+    trace: {
+      type: Schema.Types.Mixed,
+      default: null
+    },
     metadata: {
       type: Map,
       of: String

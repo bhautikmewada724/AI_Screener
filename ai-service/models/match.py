@@ -6,8 +6,10 @@ from pydantic import BaseModel, Field
 class MatchRequest(BaseModel):
   resume_skills: List[str] = Field(default_factory=list, description='Skills extracted from resume parsing')
   job_required_skills: List[str] = Field(default_factory=list, description='Skills extracted from the job description')
+  resume_text: str | None = Field(None, description='Full resume text or synthesized summary for scoring/trace')
   resume_summary: str | None = Field(None, description='Optional resume summary for context')
   job_summary: str | None = Field(None, description='Optional job description summary')
+  include_trace: bool = Field(default=False, description='Return detailed trace for diagnostics')
   scoring_config: dict | None = Field(
     default=None,
     description='Optional scoring configuration provided by the gateway (weights/constraints).'
@@ -42,4 +44,5 @@ class MatchResponse(BaseModel):
   )
   missing_must_have_skills: List[str] | None = Field(default=None)
   missing_nice_to_have_skills: List[str] | None = Field(default=None)
+  trace: dict | None = Field(default=None, description='Optional trace payload when include_trace is true')
 

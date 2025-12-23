@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 from typing import List, Optional, Tuple
@@ -8,6 +9,7 @@ from fastapi import HTTPException, status
 import utils.embeddings_client as embeddings_client
 from utils.embeddings_client import cosine_similarity
 from models.match import MatchRequest, MatchResponse
+from services.skill_utils import normalize_skill_list, aliases_for, normalize_token
 
 logger = logging.getLogger(__name__)
 
@@ -70,18 +72,36 @@ def _resolve_constraints(scoring_config: dict | None) -> tuple[list[str], list[s
 
 
 def _normalize(skills: List[str]) -> List[str]:
-  return sorted({skill.strip() for skill in skills if skill})
+  return sorted(set(normalize_skill_list(skills)))
 
 
-def _skill_overlap(resume_skills: List[str], job_skills: List[str]) -> tuple[float, List[str], List[str]]:
+def _skill_overlap(resume_skills: List[str], job_skills: List[str], resume_text_norm: str) -> tuple[float, List[str], List[str], List[str]]:
   resume_set = {skill.lower() for skill in resume_skills}
-  job_set = {skill.lower() for skill in job_skills}
 
-  matched = [skill for skill in job_skills if skill.lower() in resume_set]
-  missing = [skill for skill in job_skills if skill.lower() not in resume_set]
+  matched = []
+  matched_from_text = []
+  for skill in job_skills:
+    key = skill.lower()
+    if key in resume_set:
+      matched.append(skill)
+      continue
 
+    aliases = aliases_for(skill)
+    found_in_text = False
+    for alias in aliases:
+      if alias in resume_text_norm:
+        found_in_text = True
+        break
+    if not found_in_text and key in resume_text_norm:
+      found_in_text = True
+
+    if found_in_text:
+      matched.append(skill)
+      matched_from_text.append(skill)
+
+  missing = [skill for skill in job_skills if skill not in matched]
   coverage = len(matched) / (len(job_skills) or 1)
-  return coverage, matched, missing
+  return coverage, matched, missing, matched_from_text
 
 
 def _embedding_similarity(payload: MatchRequest) -> float:
@@ -170,8 +190,10 @@ def _clamp01(value: float) -> float:
 def score_match(payload: MatchRequest) -> MatchResponse:
   resume_skills = _normalize(payload.resume_skills)
   job_skills = _normalize(payload.job_required_skills)
+  resume_text = (payload.resume_text or payload.resume_summary or '').strip()
+  resume_text_norm = normalize_token(resume_text)
 
-  skill_score, matched_skills, missing_skills = _skill_overlap(resume_skills, job_skills)
+  skill_score, matched_skills, missing_skills, matched_from_text = _skill_overlap(resume_skills, job_skills, resume_text_norm)
   embedding_score = _embedding_similarity(payload)
   experience_score, experience_years = _experience_alignment(payload)
   location_score, location_match = _location_alignment(payload)
@@ -251,6 +273,25 @@ def score_match(payload: MatchRequest) -> MatchResponse:
     'model_version': 'matching_service_v1'
   }
 
+  trace = _build_trace(
+    payload=payload,
+    matched_skills=matched_skills,
+    missing_skills=missing_skills,
+    matched_from_text=matched_from_text,
+    missing_must_have=missing_must_have,
+    embedding_score=embedding_score,
+    experience_score=experience_score,
+    education_score=education_score,
+    keywords_score=keywords_score,
+    skill_score=skill_score,
+    match_score=match_score,
+    experience_years=experience_years,
+    weights=weights,
+    job_skills=job_skills,
+    resume_skills=resume_skills,
+    resume_text=resume_text
+  ) if payload.include_trace else None
+
   return MatchResponse(
     match_score=round(match_score, 3),
     matched_skills=matched_skills,
@@ -263,5 +304,104 @@ def score_match(payload: MatchRequest) -> MatchResponse:
     model_metadata=model_metadata,
     missing_must_have_skills=missing_must_have or [],
     missing_nice_to_have_skills=missing_nice_to_have or [],
+    trace=trace
   )
+
+
+def _redact(text: str, limit: int = 400) -> str:
+  if not text:
+    return ''
+  redacted = re.sub(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}', '<REDACTED_EMAIL>', text)
+  redacted = re.sub(r'(\+?\d[\d\s().-]{7,})', '<REDACTED_PHONE>', redacted)
+  return redacted[:limit]
+
+
+def _hash_text(text: str) -> str | None:
+  if not text:
+    return None
+  return hashlib.sha256(text.encode('utf-8', errors='ignore')).hexdigest()
+
+
+def _build_trace(
+  payload: MatchRequest,
+  matched_skills: list[str],
+  missing_skills: list[str],
+  matched_from_text: list[str],
+  missing_must_have: list[str],
+  embedding_score: float,
+  experience_score: float,
+  education_score: float,
+  keywords_score: float,
+  skill_score: float,
+  match_score: float,
+  experience_years: Optional[float],
+  weights: dict,
+  job_skills: list[str],
+  resume_skills: list[str],
+  resume_text: str
+) -> dict:
+  resume_text = resume_text or ''
+  resume_text_length = len(resume_text)
+  extraction_warnings: list[str] = []
+  if not resume_text:
+    extraction_warnings.append('EMPTY_TEXT')
+  elif resume_text_length < 40:
+    extraction_warnings.append('TEXT_TOO_SHORT')
+
+  resume_lines = resume_text.count('\n') + (1 if resume_text else 0)
+  section_headers_detected = [header for header in ['experience', 'education', 'projects'] if header in resume_text.lower()]
+
+  required_skills = job_skills or []
+  required_skills_matched = matched_skills
+  required_skills_total = len(required_skills)
+  required_skills_matched_count = len(required_skills_matched)
+  required_skills_coverage_pct = round((required_skills_matched_count / (required_skills_total or 1)) * 100, 1)
+
+  keywords_hits = [kw for kw in required_skills if kw.lower() in resume_text.lower()][:50]
+
+  scores_trace = {
+    'skillsScore': round(skill_score * 100, 1),
+    'experienceScore': round(experience_score * 100, 1),
+    'educationScore': round(education_score * 100, 1),
+    'keywordsScore': round(keywords_score * 100, 1),
+    'finalScore': round(match_score * 100, 1),
+    'weights': {k: round(v, 1) for k, v in weights.items()}
+  }
+
+  return {
+    'extraction': {
+      'source': 'resume_summary',
+      'resumeTextLength': resume_text_length,
+      'lineCount': resume_lines,
+      'textPreview': _redact(resume_text),
+      'textSha256': _hash_text(resume_text),
+      'sectionHeadersDetected': section_headers_detected,
+      'extractionWarnings': extraction_warnings
+    },
+    'skills': {
+      'requiredSkills': required_skills[:200],
+      'skillsRawFound': (payload.resume_skills or [])[:200],
+      'skillsNormalizedFound': (resume_skills or [])[:200],
+      'matchedFromSkills': sorted(set(required_skills_matched) - set(matched_from_text))[:200],
+      'matchedFromText': sorted(set(matched_from_text))[:200],
+      'requiredSkillsMatched': required_skills_matched[:200],
+      'requiredSkillsTotal': required_skills_total,
+      'requiredSkillsMatchedCount': required_skills_matched_count,
+      'requiredSkillsCoveragePct': required_skills_coverage_pct
+    },
+    'experience': {
+      'yearsDetected': experience_years,
+      'signals': [f'years:{experience_years}'] if experience_years is not None else []
+    },
+    'education': {
+      'detected': True,
+      'signals': []
+    },
+    'keywords': {
+      'hits': keywords_hits,
+      'hitCount': len(keywords_hits)
+    },
+    'scores': scores_trace,
+    'warnings': missing_must_have
+  }
 

@@ -1,3 +1,5 @@
+import { randomUUID } from 'crypto';
+
 import Application from '../models/Application.js';
 import AuditEvent from '../models/AuditEvent.js';
 import JobDescription from '../models/JobDescription.js';
@@ -11,6 +13,8 @@ import { mergeWithDefaults } from './scoringConfig.js';
  * Shared helpers for HR workflow controllers to avoid duplicating ownership checks
  * and AI scoring orchestration.
  */
+export const isTraceEnabled = () => String(process.env.TRACE_MATCHING || '').toLowerCase() === 'true';
+
 export const assertJobOwnership = (job, user) => {
   if (!job) {
     const notFound = new Error('Job not found.');
@@ -83,6 +87,7 @@ export const normalizeAiMatchResponse = (aiResponse = {}) => {
     []
   );
   const explainability = pickField(aiResponse, 'explanation', 'explanation', {}) || {};
+  const trace = pickField(aiResponse, 'trace', 'trace', null);
 
   let explanation = explainability;
   if (!explanation || typeof explanation !== 'object') {
@@ -117,11 +122,22 @@ export const normalizeAiMatchResponse = (aiResponse = {}) => {
     embeddingSimilarity,
     explanation,
     scoreBreakdown,
-    scoringConfigVersion
+    scoringConfigVersion,
+    trace
   };
 };
 
-export const ensureMatchResult = async ({ job, resume, forceRefresh = false }) => {
+export const ensureMatchResult = async ({ job, resume, forceRefresh = false, requestId: incomingRequestId }) => {
+  const tracingEnabled = isTraceEnabled();
+  const requestId = incomingRequestId || randomUUID();
+  if (tracingEnabled) {
+    console.log('[TRACE] backend received apply request', {
+      requestId,
+      jobId: job?._id,
+      resumeId: resume?._id
+    });
+  }
+
   if (!forceRefresh) {
     const existing = await MatchResult.findOne({
       jobId: job._id,
@@ -132,19 +148,70 @@ export const ensureMatchResult = async ({ job, resume, forceRefresh = false }) =
         existing.candidateId = resume.userId;
         await existing.save();
       }
+      if (tracingEnabled) {
+        console.log('[TRACE] cache hit -> returning existing MatchResult', {
+          requestId,
+          jobId: job._id,
+          resumeId: resume._id,
+          matchScore: existing.matchScore
+        });
+      }
       return existing;
     }
   }
 
   const scoringConfig = mergeWithDefaults(job.scoringConfig || {});
+  const resumeSkills = Array.isArray(resume.parsedData?.skills) ? resume.parsedData.skills : [];
+  const jobRequiredSkills = Array.isArray(job.requiredSkills) ? job.requiredSkills : [];
+  const resumeTextParts = [];
+  if (resume.parsedData?.summary) resumeTextParts.push(resume.parsedData.summary);
+  if (resumeSkills.length) resumeTextParts.push(resumeSkills.join(', '));
+  if (Array.isArray(resume.parsedData?.experience)) {
+    const expSummaries = resume.parsedData.experience
+      .map((item) => [item.role, item.company, item.duration].filter(Boolean).join(' '))
+      .filter(Boolean);
+    if (expSummaries.length) resumeTextParts.push(expSummaries.join(' | '));
+  }
+  if (Array.isArray(resume.parsedData?.education)) {
+    const eduSummaries = resume.parsedData.education
+      .map((item) => [item.institution, item.degree, item.graduationYear].filter(Boolean).join(' '))
+      .filter(Boolean);
+    if (eduSummaries.length) resumeTextParts.push(eduSummaries.join(' | '));
+  }
+  const resumeText = resumeTextParts.filter(Boolean).join(' · ').trim();
+  if (tracingEnabled) {
+    console.log('[TRACE] scoring with parsedData', {
+      requestId,
+      jobId: job._id,
+      resumeId: resume._id,
+      resumeSkills: resumeSkills,
+      jobRequiredSkills,
+      resumeSkillsCount: resumeSkills.length,
+      resumeSummaryLength: resume.parsedData?.summary ? resume.parsedData.summary.length : 0,
+      resumeTextLength: resumeText.length,
+      includeTrace: tracingEnabled,
+      payloadKeys: ['resume_skills', 'job_required_skills', 'resume_summary', 'job_summary', 'scoring_config', 'scoring_config_version', 'include_trace']
+    });
+  }
   const aiResponse = await matchResumeToJob({
-    resume_skills: resume.parsedData?.skills || [],
-    job_required_skills: job.requiredSkills || [],
+    resume_skills: resumeSkills,
+    job_required_skills: jobRequiredSkills,
     resume_summary: resume.parsedData?.summary,
+    resume_text: resumeText || undefined,
     job_summary: job.description,
     scoring_config: scoringConfig,
-    scoring_config_version: job.scoringConfigVersion ?? scoringConfig.version ?? 0
-  });
+    scoring_config_version: job.scoringConfigVersion ?? scoringConfig.version ?? 0,
+    include_trace: tracingEnabled
+  }, { headers: { 'X-Request-Id': requestId } });
+  if (tracingEnabled) {
+    console.log('[TRACE] ai-service match response received', {
+      requestId,
+      hasTrace: Boolean(aiResponse?.trace),
+      traceExtractionLength: aiResponse?.trace?.extraction?.resumeTextLength,
+      requiredSkillsMatchedCount: aiResponse?.trace?.skills?.requiredSkillsMatchedCount,
+      matchedSkillsCount: Array.isArray(aiResponse?.matched_skills) ? aiResponse.matched_skills.length : 0
+    });
+  }
 
   const normalized = normalizeAiMatchResponse(aiResponse);
   const scoringConfigVersion =
@@ -153,29 +220,73 @@ export const ensureMatchResult = async ({ job, resume, forceRefresh = false }) =
     scoringConfig.version ??
     0;
 
+  const backendTrace = tracingEnabled
+    ? {
+        requestId,
+        timestamp: new Date().toISOString(),
+        jobId: job._id,
+        applicationId: null,
+        warnings: [],
+        fallbackUsed: false,
+        environment: process.env.NODE_ENV || 'development'
+      }
+    : null;
+
+  const mergedTrace =
+    tracingEnabled && (normalized.trace || backendTrace)
+      ? { backend: backendTrace, aiService: normalized.trace || null }
+      : undefined;
+
+  const update = {
+    $set: {
+      candidateId: resume.userId || resume.owner,
+      matchScore: normalized.matchScore,
+      matchedSkills: normalized.matchedSkills,
+      missingSkills: normalized.missingSkills,
+      embeddingSimilarity: normalized.embeddingSimilarity,
+      explanation: normalized.explanation,
+      scoreBreakdown: normalized.scoreBreakdown,
+      scoringConfigVersion,
+      trace: tracingEnabled ? mergedTrace : undefined
+    }
+  };
+
+  if (!tracingEnabled) {
+    update.$unset = { trace: '' };
+  }
+
   const matchResult = await MatchResult.findOneAndUpdate(
     {
       jobId: job._id,
       resumeId: resume._id
     },
-    {
-      $set: {
-        candidateId: resume.userId || resume.owner,
-        matchScore: normalized.matchScore,
-        matchedSkills: normalized.matchedSkills,
-        missingSkills: normalized.missingSkills,
-        embeddingSimilarity: normalized.embeddingSimilarity,
-        explanation: normalized.explanation,
-        scoreBreakdown: normalized.scoreBreakdown,
-        scoringConfigVersion
-      }
-    },
+    update,
     {
       upsert: true,
       new: true,
       setDefaultsOnInsert: true
     }
   );
+
+  if (tracingEnabled) {
+    if (normalized.trace?.aiService || normalized.trace) {
+      const extraction = normalized.trace?.aiService?.extraction || normalized.trace?.extraction || {};
+      const skills = normalized.trace?.aiService?.skills || normalized.trace?.skills || {};
+      console.log('[TRACE][AI-SERVICE]', {
+        requestId,
+        resumeTextLength: extraction.resumeTextLength,
+        extractionWarnings: extraction.extractionWarnings,
+        requiredSkillsMatchedCount: skills.requiredSkillsMatchedCount,
+        requiredSkillsTotal: skills.requiredSkillsTotal
+      });
+    } else {
+      console.log('[TRACE] ai-service trace not provided', {
+        requestId,
+        jobId: job._id,
+        resumeId: resume._id
+      });
+    }
+  }
 
   return matchResult;
 };
@@ -276,6 +387,7 @@ export const recomputeMatchesForJob = async ({ job, limit = 200 }) => {
 export const getJobCandidates = async ({ job, minScore = 0, limit = 10, refresh = false }) => {
   const safeLimit = clampLimit(limit, { min: 1, max: 50, fallback: 10 });
   const safeMinScore = Number(minScore) || 0;
+  const tracingEnabled = isTraceEnabled();
 
   const applications = await Application.find({ jobId: job._id })
     .sort({ matchScore: -1, createdAt: 1 })
@@ -335,6 +447,7 @@ export const getJobCandidates = async ({ job, minScore = 0, limit = 10, refresh 
         scoringConfigVersion: match.scoringConfigVersion,
         resumeSummary: resume?.parsedData?.summary,
         resumeSkills: resume?.parsedData?.skills,
+        trace: tracingEnabled ? match.trace : undefined,
         applied: false
       };
     });

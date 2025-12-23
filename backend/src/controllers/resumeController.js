@@ -33,6 +33,16 @@ export const uploadResume = async (req, res, next) => {
       });
       resume.parsedData = transformAiResumeToParsedData(parsedData);
       resume.status = 'parsed';
+      resume.parsedAt = new Date();
+      resume.parserVersion = 'ai-service/v1';
+      if (String(process.env.TRACE_MATCHING || '').toLowerCase() === 'true') {
+        console.log('[TRACE] resume parsed on upload', {
+          resumeId: resume._id,
+          userId: req.user.id,
+          skillsCount: Array.isArray(resume.parsedData?.skills) ? resume.parsedData.skills.length : 0,
+          summaryLength: resume.parsedData?.summary ? resume.parsedData.summary.length : 0
+        });
+      }
     } catch (error) {
       resume.status = 'failed';
       resume.parsedData = { error: error.message };

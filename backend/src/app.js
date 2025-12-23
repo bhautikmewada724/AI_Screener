@@ -20,6 +20,7 @@ import recommendationRouter from './routes/recommendationRoutes.js';
 import buildSwaggerSpec from './swagger.js';
 
 dotenv.config();
+console.log('[BOOT] TRACE_MATCHING=', process.env.TRACE_MATCHING);
 
 const app = express();
 app.set('etag', false); // prevent 304 responses when testing via Swagger

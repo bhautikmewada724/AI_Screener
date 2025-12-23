@@ -68,3 +68,88 @@ def test_score_match_handles_embedding_failures(monkeypatch):
   assert response.embedding_similarity == 0
   assert response.match_score >= 0  # still returns a response without raising
 
+
+def test_score_match_returns_trace_when_requested():
+  payload = MatchRequest(
+    resume_skills=['Python', 'FastAPI'],
+    job_required_skills=['Python', 'FastAPI', 'PostgreSQL'],
+    resume_summary='Python dev with FastAPI experience. Email me at test@example.com. Phone: +1 555-123-4567.',
+    job_summary='Backend role needing Python and FastAPI.',
+    include_trace=True
+  )
+
+  response = score_match(payload)
+
+  assert response.trace is not None
+  assert response.trace['extraction']['resumeTextLength'] > 0
+  assert '<REDACTED_EMAIL>' in response.trace['extraction']['textPreview']
+  assert '<REDACTED_PHONE>' in response.trace['extraction']['textPreview']
+  assert response.trace['skills']['requiredSkillsMatchedCount'] >= 2
+
+
+def test_score_match_trace_flags_empty_text():
+  payload = MatchRequest(
+    resume_skills=[],
+    job_required_skills=['Go'],
+    resume_summary='',
+    job_summary='',
+    include_trace=True
+  )
+
+  response = score_match(payload)
+
+  assert 'EMPTY_TEXT' in response.trace['extraction']['extractionWarnings']
+  assert response.trace['extraction']['resumeTextLength'] == 0
+
+
+def test_score_match_alias_normalization_and_trace_counts():
+  payload = MatchRequest(
+    resume_skills=['node js', 'expressjs', 'MongoDB', 'fast api', 'AWS', 'ci cd'],
+    job_required_skills=['Node.js', 'Express', 'MongoDB', 'FastAPI', 'AWS', 'CI/CD'],
+    resume_summary='Built Node.js + Express services on AWS with CI/CD pipelines and MongoDB.',
+    job_summary='Looking for Node.js, Express, MongoDB, FastAPI, AWS, and CI/CD experience.',
+    include_trace=True
+  )
+
+  response = score_match(payload)
+
+  assert response.trace is not None
+  assert response.trace['skills']['requiredSkillsMatchedCount'] == 6
+  assert set(response.matched_skills) == {'Node.js', 'Express', 'MongoDB', 'FastAPI', 'AWS', 'CI/CD'}
+
+
+def test_score_match_uses_resume_text_and_counts_required_skills():
+  resume_text = 'Extensive Nodejs and Express.js work with MongoDB, AWS cloud, FastAPI services, and CICD pipelines.'
+  payload = MatchRequest(
+    resume_skills=['Nodejs', 'Express.js', 'MongoDB', 'FastAPI', 'AWS', 'CICD'],
+    job_required_skills=['Node.js', 'Express', 'MongoDB', 'FastAPI', 'AWS', 'CI/CD'],
+    resume_text=resume_text,
+    resume_summary='Short summary',
+    job_summary='Need Node.js, Express, MongoDB, FastAPI, AWS, CI/CD',
+    include_trace=True
+  )
+
+  response = score_match(payload)
+
+  assert response.trace is not None
+  assert response.trace['extraction']['resumeTextLength'] == len(resume_text)
+  assert response.trace['skills']['requiredSkillsMatchedCount'] == 6
+
+
+def test_rest_apis_matches_rest_and_rbac_from_text():
+  resume_text = 'Built secure REST API platform with role-based access control and JWT auth.'
+  payload = MatchRequest(
+    resume_skills=['REST', 'JWT'],
+    job_required_skills=['REST APIs', 'RBAC', 'JWT'],
+    resume_text=resume_text,
+    job_summary='Need REST APIs, RBAC, JWT',
+    include_trace=True
+  )
+
+  response = score_match(payload)
+
+  assert response.trace is not None
+  assert response.trace['skills']['requiredSkillsMatchedCount'] == 3
+  assert 'RBAC' in response.trace['skills']['matchedFromText']
+  assert 'REST' in response.trace['skills']['matchedFromSkills']
+

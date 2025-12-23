@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 import re
-from typing import Dict, List
+from typing import Dict, List, Set
 
-_SKILL_LIBRARY: Dict[str, str] = {
+
+def normalize_token(token: str) -> str:
+  cleaned = re.sub(r'[^a-z0-9+/# ]+', ' ', token.lower())
+  cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+  return cleaned
+
+
+_ALIAS_TO_CANON: Dict[str, str] = {
   'python': 'Python',
   'javascript': 'JavaScript',
   'typescript': 'TypeScript',
@@ -18,6 +25,7 @@ _SKILL_LIBRARY: Dict[str, str] = {
   'postgres': 'PostgreSQL',
   'postgresql': 'PostgreSQL',
   'aws': 'AWS',
+  'amazon web services': 'AWS',
   'gcp': 'GCP',
   'azure': 'Azure',
   'docker': 'Docker',
@@ -28,11 +36,18 @@ _SKILL_LIBRARY: Dict[str, str] = {
   'angular': 'Angular',
   'node.js': 'Node.js',
   'nodejs': 'Node.js',
+  'node js': 'Node.js',
+  'express': 'Express',
+  'expressjs': 'Express',
+  'express.js': 'Express',
   'fastapi': 'FastAPI',
+  'fast api': 'FastAPI',
   'django': 'Django',
   'flask': 'Flask',
   'graphql': 'GraphQL',
   'rest': 'REST',
+  'rest api': 'REST',
+  'rest apis': 'REST',
   'microservices': 'Microservices',
   'machine learning': 'Machine Learning',
   'deep learning': 'Deep Learning',
@@ -43,6 +58,8 @@ _SKILL_LIBRARY: Dict[str, str] = {
   'pytest': 'pytest',
   'cicd': 'CI/CD',
   'ci/cd': 'CI/CD',
+  'ci cd': 'CI/CD',
+  'ci': 'CI/CD',
   'git': 'Git',
   'linux': 'Linux',
   'agile': 'Agile',
@@ -59,24 +76,48 @@ _SKILL_LIBRARY: Dict[str, str] = {
   'spark': 'Spark',
   'hadoop': 'Hadoop',
   'tableau': 'Tableau',
-  'power bi': 'Power BI'
+  'power bi': 'Power BI',
+  'rbac': 'RBAC',
+  'role based access control': 'RBAC',
+  'role-based access control': 'RBAC',
+  'jwt': 'JWT',
+  'json web token': 'JWT',
+  'json-web-token': 'JWT',
+  'mongoose': 'Mongoose',
+  'mongooselib': 'Mongoose',
+  'validation': 'Validation',
+  'input validation': 'Validation'
 }
+
+
+def _canonicalize(raw: str) -> str | None:
+  normalized = normalize_token(raw)
+  if not normalized:
+    return None
+  if normalized in _ALIAS_TO_CANON:
+    return _ALIAS_TO_CANON[normalized]
+  return raw.strip()
+
+
+_CANON_TO_ALIASES: Dict[str, Set[str]] = {}
+for alias, canon in _ALIAS_TO_CANON.items():
+  _CANON_TO_ALIASES.setdefault(canon, set()).add(alias)
 
 
 def extract_skills(text: str, max_results: int | None = None) -> List[str]:
   """Return canonicalized skills found within free-form text."""
 
-  normalized_text = text.lower()
-  detected_keys = {skill for skill in _SKILL_LIBRARY if skill in normalized_text}
+  normalized_text = normalize_token(text)
+  detected_aliases = {alias for alias in _ALIAS_TO_CANON if alias in normalized_text}
 
   # Capture shorter tokens in bulleted lists (e.g., "• AWS" or "- Kubernetes")
   keyword_matches = re.findall(r'\b[A-Za-z0-9+#./ ]{3,}\b', normalized_text)
   for token in keyword_matches:
-    token = token.strip()
-    if token in _SKILL_LIBRARY:
-      detected_keys.add(token)
+    token_norm = normalize_token(token)
+    if token_norm in _ALIAS_TO_CANON:
+      detected_aliases.add(token_norm)
 
-  ordered = sorted({_SKILL_LIBRARY[key] for key in detected_keys})
+  ordered = sorted({_ALIAS_TO_CANON[alias] for alias in detected_aliases})
 
   if max_results is not None:
     return ordered[:max_results]
@@ -84,22 +125,24 @@ def extract_skills(text: str, max_results: int | None = None) -> List[str]:
 
 
 def normalize_skill_list(skills: List[str]) -> List[str]:
-  """Deduplicate and consistently format arbitrary skill strings."""
+  """Deduplicate and consistently format arbitrary skill strings (alias aware)."""
 
   normalized: List[str] = []
   seen = set()
 
   for skill in skills:
-    if not skill:
+    canonical = _canonicalize(skill)
+    if not canonical:
       continue
-    cleaned = re.sub(r'\s+', ' ', skill).strip()
-    if not cleaned:
-      continue
-    key = cleaned.lower()
+    key = canonical.lower()
     if key in seen:
       continue
     seen.add(key)
-    normalized.append(cleaned)
+    normalized.append(canonical)
 
   return normalized
+
+
+def aliases_for(canon: str) -> List[str]:
+  return sorted(_CANON_TO_ALIASES.get(canon, set()))
 

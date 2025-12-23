@@ -1,4 +1,6 @@
+import { randomUUID } from 'crypto';
 import MatchResult from '../models/MatchResult.js';
+import { ensureMatchResultPayload } from './traceMatching.js';
 
 /**
  * Deterministic heuristic scoring helpers.
@@ -81,6 +83,32 @@ export const computeTagScore = (job, resume) => {
   return { score: clamp01(score), matchedTags: matched };
 };
 
+export const clearMatchResultCache = async ({ jobId, resumeId, requestId }) => {
+  const traceEnabled = String(process.env.TRACE_MATCHING || '').toLowerCase() === 'true';
+  try {
+    const result = await MatchResult.deleteOne({ jobId, resumeId });
+    if (traceEnabled) {
+      console.log('[TRACE] clearing MatchResult cache before scoring', {
+        requestId,
+        jobId,
+        resumeId,
+        deletedCount: result?.deletedCount ?? 0
+      });
+    }
+    return result;
+  } catch (error) {
+    if (traceEnabled) {
+      console.log('[TRACE] failed to clear MatchResult cache', {
+        requestId,
+        jobId,
+        resumeId,
+        error: error.message
+      });
+    }
+    return { acknowledged: false, deletedCount: 0 };
+  }
+};
+
 const combineScores = (scores) => {
   const totalWeight = Object.values(DEFAULT_WEIGHTS).reduce((sum, weight) => sum + weight, 0);
 
@@ -94,10 +122,39 @@ const combineScores = (scores) => {
   return clamp01(combinedScore);
 };
 
-export const scoreCandidateForJob = async ({ job, resume, forceRefresh = false }) => {
+export const scoreCandidateForJob = async ({
+  job,
+  resume,
+  forceRefresh = false,
+  trace,
+  requestId: incomingRequestId
+} = {}) => {
   if (!job || !resume) {
     throw new Error('Job and resume are required for scoring.');
   }
+
+  const requestId = incomingRequestId || randomUUID();
+  console.log('[TRACE] scoreCandidateForJob CALLED', {
+    requestId,
+    jobId: job?._id,
+    resumeId: resume?._id,
+    forceRefresh
+  });
+  console.log('[TRACE] TRACE_MATCHING env =', process.env.TRACE_MATCHING);
+
+  if (String(process.env.TRACE_MATCHING || '').toLowerCase() === 'true') {
+    console.log('[TRACE][BACKEND_HEURISTIC_INPUT]', {
+      jobRequiredSkills: job.requiredSkills,
+      resumeSkillsCount: resume.parsedData?.skills?.length ?? 0,
+      resumeSkills: resume.parsedData?.skills ?? [],
+      resumeExperienceCount: resume.parsedData?.experience?.length ?? 0,
+      resumeLocation: resume.parsedData?.location ?? resume.metadata?.location ?? null,
+      resumeTags: resume.metadata?.tags ?? []
+    });
+  }
+  
+
+  const traceEnabled = String(process.env.TRACE_MATCHING || '').toLowerCase() === 'true';
 
   if (!forceRefresh) {
     const existingResult = await MatchResult.findOne({
@@ -106,6 +163,12 @@ export const scoreCandidateForJob = async ({ job, resume, forceRefresh = false }
     });
 
     if (existingResult) {
+      console.log('[TRACE] cache hit -> returning existing MatchResult', {
+        requestId,
+        jobId: job._id,
+        resumeId: resume._id,
+        matchScore: existingResult.matchScore
+      });
       return existingResult;
     }
   }
@@ -131,6 +194,21 @@ export const scoreCandidateForJob = async ({ job, resume, forceRefresh = false }
     weights: DEFAULT_WEIGHTS
   };
 
+  if (traceEnabled) {
+    console.log('[TRACE][BACKEND_SCORING_BREAKDOWN]', {
+      requestId,
+      jobId: job._id,
+      resumeId: resume._id,
+      skillsScore: skillFeatures.score,
+      matchedSkills: skillFeatures.matchedSkills,
+      missingSkills: skillFeatures.missingSkills,
+      experienceYears: experienceFeatures.years,
+      locationScore: locationFeatures.score,
+      tagScore: tagFeatures.score,
+      finalScore: aggregatedScore
+    });
+  }
+
   const match = await MatchResult.findOneAndUpdate(
     {
       jobId: job._id,
@@ -140,11 +218,34 @@ export const scoreCandidateForJob = async ({ job, resume, forceRefresh = false }
       $set: {
         matchScore: aggregatedScore,
         matchedSkills: skillFeatures.matchedSkills,
-        explanation
-      }
+        explanation,
+        ...ensureMatchResultPayload({ trace, traceEnabled })
+      },
+      ...(traceEnabled ? {} : { $unset: { trace: '' } })
     },
     { upsert: true, new: true }
   );
+
+  if (traceEnabled) {
+    const tracePayload = trace;
+    if (tracePayload?.aiService) {
+      const extraction = tracePayload.aiService.extraction || {};
+      const skills = tracePayload.aiService.skills || {};
+      console.log('[TRACE][AI-SERVICE]', {
+        requestId,
+        resumeTextLength: extraction.resumeTextLength,
+        extractionWarnings: extraction.extractionWarnings,
+        requiredSkillsMatchedCount: skills.requiredSkillsMatchedCount,
+        requiredSkillsTotal: skills.requiredSkillsTotal
+      });
+    } else {
+      console.log('[TRACE] ai-service trace not provided', {
+        requestId,
+        jobId: job._id,
+        resumeId: resume._id
+      });
+    }
+  }
 
   return match;
 };

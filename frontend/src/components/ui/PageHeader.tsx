@@ -11,14 +11,16 @@ interface PageHeaderProps {
 
 const PageHeader = ({ title, subtitle, actions }: PageHeaderProps) => {
   const topbar = useTopbarContext();
+  const setContent = topbar?.setContent;
+  const resetContent = topbar?.resetContent;
 
   useEffect(() => {
-    if (!topbar) return undefined;
-    topbar.setContent({ title, subtitle });
+    if (!setContent || !resetContent) return undefined;
+    setContent({ title, subtitle });
     return () => {
-      topbar.resetContent();
+      resetContent();
     };
-  }, [subtitle, title, topbar]);
+  }, [subtitle, title, setContent, resetContent]);
 
   return (
   <header className="page-header">

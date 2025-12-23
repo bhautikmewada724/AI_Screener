@@ -214,7 +214,8 @@ export const getScorePreview = async (req, res, next) => {
       matchedSkills: matchResult.matchedSkills,
       explanation: matchResult.explanation,
       scoreBreakdown: matchResult.scoreBreakdown,
-      scoringConfigVersion: matchResult.scoringConfigVersion
+      scoringConfigVersion: matchResult.scoringConfigVersion,
+      trace: matchResult.trace
     });
   } catch (error) {
     next(error);
