@@ -9,6 +9,7 @@ import {
   mergeWithDefaults,
   validateAndNormalizeScoringConfig
 } from '../services/scoringConfig.js';
+import { getEffectiveParsedData } from '../services/resumeCorrectionService.js';
 
 const shouldAutoParseJd = () => String(process.env.ENABLE_JD_PARSING).toLowerCase() === 'true';
 
@@ -341,20 +342,23 @@ export const getJobMatches = async (req, res, next) => {
     const paged = sorted.slice((page - 1) * limit, page * limit);
 
     return res.json({
-      data: paged.map(({ match, resume }) => ({
-        matchId: match._id,
-        resumeId: resume._id,
-        candidateId: resume.userId,
-        matchScore: match.matchScore,
-        matchedSkills: match.matchedSkills,
-        explanation: match.explanation,
-        missingSkills: match.missingSkills,
-        embeddingSimilarity: match.embeddingSimilarity,
-        scoreBreakdown: match.scoreBreakdown,
-        scoringConfigVersion: match.scoringConfigVersion,
-        resumeSummary: resume.parsedData?.summary,
-        resumeSkills: resume.parsedData?.skills
-      })),
+      data: paged.map(({ match, resume }) => {
+        const parsedData = getEffectiveParsedData(resume);
+        return {
+          matchId: match._id,
+          resumeId: resume._id,
+          candidateId: resume.userId,
+          matchScore: match.matchScore,
+          matchedSkills: match.matchedSkills,
+          explanation: match.explanation,
+          missingSkills: match.missingSkills,
+          embeddingSimilarity: match.embeddingSimilarity,
+          scoreBreakdown: match.scoreBreakdown,
+          scoringConfigVersion: match.scoringConfigVersion,
+          resumeSummary: parsedData?.summary,
+          resumeSkills: parsedData?.skills
+        };
+      }),
       pagination: {
         total: sorted.length,
         page,

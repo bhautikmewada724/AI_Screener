@@ -112,3 +112,11 @@ This document freezes the request/response schemas that the Node backend and Rea
 - **Error handling:** AI service should return HTTP 4xx/5xx with `{ message, detail? }` JSON bodies. Backend wraps failures and stores `{ error: string }` inside `resume.parsedData` when parsing fails.
 - **Extending schemas:** Always add new fields rather than renaming/removing existing ones. Coordinate backend/frontend updates when introducing new required outputs so the contracts stay synchronized.
 
+---
+
+## Candidate resume corrections (gateway)
+- **Endpoint:** `PATCH /resume/{id}/parsedData` (Candidate role only; must own the resume).
+- **Allowed fields:** `skills` (string[] max 200, trimmed/deduped), `totalYearsExperience` (0–60, numeric), `location` (string up to 120 chars).
+- **Behavior:** Stores corrections in `parsedDataCorrected`, sets `isCorrected=true`, and stamps `correctedAt`; original `parsedData` is preserved.
+- **Responses:** `200 { success: true, resume }`; `400` for unknown/invalid fields; `403` when resume.userId !== requester; `404` when the resume is missing.
+

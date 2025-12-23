@@ -21,19 +21,41 @@ const ResumeViewer = ({ resume, matchScore, highlightedSkills = [] }: ResumeView
 
   if (!resume) return null;
 
-  const skills = resume.parsedData?.skills ?? [];
-  const experiences = resume.parsedData?.experience ?? [];
-  const education = resume.parsedData?.education ?? [];
-  const location = resume.parsedData?.location;
+  const parsedData = useMemo(() => {
+    const base = resume.parsedData ?? {};
+    const corrected = resume.parsedDataCorrected;
+    if (corrected && Object.keys(corrected).length > 0) {
+      const merged = { ...base };
+      Object.keys(corrected).forEach((key) => {
+        // allow overriding with empty arrays/strings/numbers
+        merged[key as keyof typeof merged] = corrected[key as keyof typeof corrected];
+      });
+      return merged;
+    }
+    return base;
+  }, [resume]);
+
+  const skills = parsedData?.skills ?? [];
+  const experiences = parsedData?.experience ?? [];
+  const education = parsedData?.education ?? [];
+  const location = parsedData?.location;
+  const totalYearsExperience = parsedData?.totalYearsExperience;
   const highlightSet = useMemo(() => new Set(highlightedSkills.map((skill) => skill.toLowerCase())), [highlightedSkills]);
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card-sm">
-      <div className="flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <h3 className="text-lg font-semibold text-brand-navy">Resume Insights</h3>
-        {typeof matchScore === 'number' && (
-          <span className="text-3xl font-bold text-brand-navy">{Math.round(matchScore * 100)}%</span>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {resume?.isCorrected && (
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+              Candidate verified
+            </span>
+          )}
+          {typeof matchScore === 'number' && (
+            <span className="text-3xl font-bold text-brand-navy">{Math.round(matchScore * 100)}%</span>
+          )}
+        </div>
       </div>
 
       <div className="mt-4 flex flex-col gap-4 lg:flex-row">
@@ -55,10 +77,15 @@ const ResumeViewer = ({ resume, matchScore, highlightedSkills = [] }: ResumeView
         <div className="flex-1">
           {activeTab === 'summary' && (
             <section className="space-y-3 text-brand-navy">
-              <p className="text-sm text-brand-ash">{resume.parsedData?.summary || 'No summary available yet.'}</p>
+              <p className="text-sm text-brand-ash">{parsedData?.summary || 'No summary available yet.'}</p>
               {location && (
                 <p className="text-sm text-brand-navy">
                   <strong>Location:</strong> {location}
+                </p>
+              )}
+              {typeof totalYearsExperience === 'number' && (
+                <p className="text-sm text-brand-navy">
+                  <strong>Experience:</strong> {totalYearsExperience} years
                 </p>
               )}
             </section>

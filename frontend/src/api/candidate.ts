@@ -44,6 +44,18 @@ export const uploadCandidateResume = async (file: File, token?: string) => {
   return response.json() as Promise<{ resumeId: string; status: string }>;
 };
 
+export const updateResumeParsedData = (
+  resumeId: string,
+  payload: Partial<Pick<ResumePayload['parsedData'], 'skills' | 'totalYearsExperience' | 'location'>>,
+  token?: string
+) => {
+  return apiRequest<{ success: boolean; resume: ResumePayload }>(`/resume/${resumeId}/parsedData`, {
+    method: 'PATCH',
+    token,
+    body: JSON.stringify(payload)
+  });
+};
+
 export const fetchOpenJobs = (params: { page?: number; limit?: number; search?: string; location?: string }, token?: string) => {
   const path = withQuery('/jobs', params);
   return apiRequest<{

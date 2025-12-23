@@ -19,6 +19,12 @@ from utils.settings import get_settings
 logger = logging.getLogger(__name__)
 
 _UNIVERSITY_KEYWORDS = ('university', 'college', 'institute', 'school')
+_CONTACT_PATTERNS = (
+  r'\b\+?\d{7,}\b',
+  r'@',
+  r'\blinked(in)?\b',
+  r'\bgithub\b'
+)
 
 
 class ResumeParser:
@@ -52,10 +58,11 @@ class ResumeParser:
         warnings=warnings
       )
 
+    sections = self._split_sections(text)
     structured = None
     if self._use_llm:
       try:
-        structured = self._extract_structured_with_llm(text)
+        structured = self._extract_structured_with_llm(text, sections)
       except Exception as exc:  # noqa: BLE001
         warnings.append('LLM parsing unavailable, falling back to heuristics.')
         logger.warning('LLM resume parsing failed: %s', exc)
@@ -68,17 +75,18 @@ class ResumeParser:
     if not skills:
       skills = self._extract_skills(text)
 
-    experience = (
-      self._coerce_experience_entries(structured.get('experience', []))
-      if structured
-      else self._extract_experience(text)
-    )
+    experience = []
+    if structured:
+      experience = self._coerce_experience_entries(structured.get('experience', []))
+    if not experience:
+      exp_text = sections.get('experience') if sections else text
+      experience = self._extract_experience(exp_text or text)
 
-    education = (
-      self._coerce_education_entries(structured.get('education', []))
-      if structured
-      else self._extract_education(text)
-    )
+    education = []
+    if structured:
+      education = self._coerce_education_entries(structured.get('education', []))
+    if not education:
+      education = self._extract_education(text)
 
     location = structured.get('location') if structured else None
     if not location:
@@ -119,6 +127,40 @@ class ResumeParser:
     except Exception as exc:  # noqa: BLE001
       return '', f'Failed to read resume: {exc}'
 
+  def _split_sections(self, text: str) -> dict[str, str]:
+    """Lightweight section splitter to reduce cross-contamination."""
+    sections = {
+      'summary': [],
+      'experience': [],
+      'education': [],
+      'skills': [],
+      'projects': [],
+      'other': []
+    }
+    current = 'other'
+    for line in text.splitlines():
+      raw = line.strip()
+      if not raw:
+        continue
+      lower = raw.lower()
+      if re.match(r'^(experience|work experience)\b', lower):
+        current = 'experience'
+        continue
+      if re.match(r'^(education|academics)\b', lower):
+        current = 'education'
+        continue
+      if re.match(r'^skills?\b', lower):
+        current = 'skills'
+        continue
+      if re.match(r'^(projects?)\b', lower):
+        current = 'projects'
+        continue
+      if re.match(r'^(summary|profile|about)\b', lower):
+        current = 'summary'
+        continue
+      sections[current].append(raw)
+    return {k: '\n'.join(v).strip() for k, v in sections.items() if v}
+
   def _generate_summary(self, text: str, candidate_name: str | None) -> str:
     head = text.strip().splitlines()
     first_paragraph = ' '.join(head[:5])[:600]
@@ -143,13 +185,13 @@ class ResumeParser:
   def _extract_skills(self, text: str) -> List[str]:
     return normalize_skill_list(extract_skills(text))
 
-  def _extract_experience(self, text: str) -> List[ExperienceItem]:
+  def _extract_experience(self, text: str, limit: int = 5) -> List[ExperienceItem]:
     experience: List[ExperienceItem] = []
+
     pattern = re.compile(
       r'(?P<role>[A-Za-z0-9 /&,+-]+)\s+at\s+(?P<company>[A-Za-z0-9 .,&-]+)\s*(?P<duration>\([^)]+\)|[0-9]{4}[^,\n]*)?',
       re.IGNORECASE
     )
-
     for match in pattern.finditer(text):
       data = match.groupdict()
       start_date, end_date = self._parse_duration(data.get('duration'))
@@ -162,25 +204,89 @@ class ResumeParser:
           endDate=end_date
         )
       )
-      if len(experience) >= 5:
+      if len(experience) >= limit:
         break
 
-    return experience
+    # Fallback: two-line pairing (company then role)
+    if len(experience) < limit:
+      lines = [line.strip('•* ').strip() for line in text.splitlines() if line.strip()]
+      for i in range(len(lines) - 1):
+        company_line = lines[i]
+        role_line = lines[i + 1]
+        if company_line.lower() in {'experience', 'education', 'skills'} or role_line.lower() in {'experience', 'education', 'skills'}:
+          continue
+        if role_line.startswith(('-', '*', '•', '◦')):
+          continue
+        if not re.search(r'[A-Za-z]', company_line) or not re.search(r'[A-Za-z]', role_line):
+          continue
+        experience.append(
+          ExperienceItem(
+            company=company_line,
+            role=role_line,
+            duration=None,
+            startDate=None,
+            endDate=None,
+            description=None
+          )
+        )
+        if len(experience) >= limit:
+          break
+
+    return experience[:limit]
 
   def _extract_education(self, text: str) -> List[EducationItem]:
     education: List[EducationItem] = []
-    for line in text.splitlines():
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    cgpa_patterns = [r'cgpa[:\s]*([\d\.]+)', r'gpa[:\s]*([\d\.]+)', r'grade[:\s]*([\d\.]+)']
+
+    for idx, line in enumerate(lines):
       lower = line.lower()
-      if any(keyword in lower for keyword in _UNIVERSITY_KEYWORDS):
-        year_match = re.search(r'(19|20)\d{2}', line)
-        education.append(
-          EducationItem(
-            institution=line.strip(),
-            degree=None,
-            graduation_year=int(year_match.group()) if year_match else None
-          )
+      if not any(keyword in lower for keyword in _UNIVERSITY_KEYWORDS):
+        continue
+
+      institution = line.strip()
+      degree = None
+      grad_year = None
+      cgpa_value = None
+
+      # Look ahead a couple of lines for degree/cgpa info
+      lookahead = lines[idx: idx + 4]
+      combined = ' '.join(lookahead)
+
+      degree_match = re.search(
+        r'(b\.?\s?tech|bachelor[s]?\s+of\s+technology|bachelor[s]?\s+of\s+engineering|b\.e\.?|bsc|b\.sc\.?)'
+        r'[^,\n]*?(computer|cs|information|software|technology|engineering)?[A-Za-z ]*',
+        combined,
+        re.IGNORECASE
+      )
+      if degree_match:
+        degree = degree_match.group(0).strip().replace('  ', ' ')
+
+      year_match = re.search(r'(19|20)\d{2}', combined)
+      if year_match:
+        grad_year = int(year_match.group())
+
+      for pattern in cgpa_patterns:
+        m = re.search(pattern, combined, re.IGNORECASE)
+        if m:
+          cgpa_value = m.group(1)
+          break
+
+      if degree and cgpa_value:
+        try:
+          cgpa_val = float(str(cgpa_value).strip())
+          degree = f"{degree} (CGPA: {cgpa_val})"
+        except Exception:
+          degree = f"{degree} (CGPA: {cgpa_value})"
+
+      education.append(
+        EducationItem(
+          institution=institution,
+          degree=degree,
+          graduation_year=grad_year
         )
-      if len(education) >= 3:
+      )
+      if len(education) >= 5:
         break
     return education
 
@@ -261,16 +367,43 @@ class ResumeParser:
       return f'{token[:4]}-01-01'
     return None
 
-  def _extract_structured_with_llm(self, text: str) -> dict[str, Any]:
+  def _extract_structured_with_llm(self, text: str, sections: dict[str, str]) -> dict[str, Any]:
+    experience_text = sections.get('experience') or text
+    education_text = sections.get('education') or text
+    skills_text = sections.get('skills') or ''
+    summary_text = sections.get('summary') or ''
+
     prompt = (
-      "Extract resume details and respond with JSON containing keys: "
-      "summary (string), skills (array of strings), experience (array of objects with company, role, "
-      "startDate, endDate, duration, description), education (array with institution, degree, graduation_year), "
-      "and location (string). Use ISO-8601 dates when possible and limit to top 5 entries per section.\n"
-      "Resume text:\n"
-      f"{text[:6000]}"
+      "Extract resume details and return strict JSON with keys:\n"
+      "{\n"
+      '  "summary": string,\n'
+      '  "skills": string[],\n'
+      '  "experience": [\n'
+      '    { "company": string, "role": string, "startDate": string|undefined, "endDate": string|undefined, '
+      '      "duration": string|undefined, "location": string|undefined, "bullets": string[]|undefined, "description": string|undefined }\n'
+      '  ],\n'
+      '  "education": [ { "institution": string, "degree": string|undefined, "graduation_year": number|undefined, '
+      '                 "location": string|undefined, "startDate": string|undefined, "endDate": string|undefined, "bullets": string[]|undefined, "cgpa": number|undefined } ],\n'
+      '  "location": string|undefined\n'
+      "}\n"
+      "- Use ISO-8601 dates when possible. Limit experience and education to top 5 entries each.\n"
+      "- Do not include contact info (phone, email, links) in experience/education.\n"
+      "- Keep bullets from the source when present.\n"
+      "- Experience entries must have both company and role; ignore generic sentences without a company.\n"
+      "- Prefer the Experience section; only fallback to other text if that section is empty.\n"
+      "- Education: include the exact degree name (e.g., 'B.Tech in Computer Science Engineering') and CGPA/GPA if present.\n"
+      f"Experience section:\n{experience_text[:4000]}\n\n"
+      f"Education section:\n{education_text[:4000]}\n\n"
+      f"Skills section:\n{skills_text[:2000]}\n\n"
+      f"Summary section:\n{summary_text[:2000]}\n\n"
+      "Full resume excerpt for fallback:\n"
+      f"{text[:4000]}"
     )
-    raw = self._llm_client.run(prompt, temperature=0.15, system_prompt='You convert resumes into structured JSON.')
+    raw = self._llm_client.run(
+      prompt,
+      temperature=0.1,
+      system_prompt='You convert resumes into concise structured JSON. Return JSON only.'
+    )
     return self._parse_json_response(raw)
 
   def _parse_json_response(self, content: str) -> dict[str, Any]:
@@ -296,13 +429,24 @@ class ResumeParser:
     for entry in entries[:5]:
       if not isinstance(entry, dict):
         continue
+      bullets = entry.get('bullets') or []
+      if isinstance(bullets, str):
+        bullets = [bullets]
+      if isinstance(bullets, list):
+        bullets = [
+          b.strip() for b in bullets
+          if isinstance(b, str) and b.strip() and not self._contains_contact(b)
+        ]
       experience = ExperienceItem(
         company=(entry.get('company') or '').strip(),
         role=(entry.get('role') or '').strip(),
         duration=(entry.get('duration') or entry.get('description') or '').strip() or None,
         startDate=self._normalize_date(entry.get('startDate')),
         endDate=self._normalize_date(entry.get('endDate')),
-        description=(entry.get('description') or '').strip() or None
+        description=(
+          (entry.get('description') or '').strip()
+          or ('; '.join(bullets) if bullets else None)
+        )
       )
       if experience.company or experience.role:
         normalized.append(experience)
@@ -317,14 +461,24 @@ class ResumeParser:
       if not isinstance(entry, dict):
         continue
       year = entry.get('graduation_year') or entry.get('graduationYear') or entry.get('year')
+      cgpa = entry.get('cgpa') or entry.get('gpa') or entry.get('GPA') or entry.get('grade')
       try:
         int_year = int(year)
       except (TypeError, ValueError):
         int_year = self._extract_year_from_text(entry.get('notes') or '')
 
+      degree = (entry.get('degree') or '').strip() or None
+      if degree and cgpa:
+        # Append CGPA to degree string for display without schema change
+        try:
+          cgpa_val = float(str(cgpa).strip())
+          degree = f"{degree} (CGPA: {cgpa_val})"
+        except Exception:
+          degree = f"{degree} (CGPA: {cgpa})"
+
       education = EducationItem(
         institution=(entry.get('institution') or '').strip(),
-        degree=(entry.get('degree') or '').strip() or None,
+        degree=degree,
         graduation_year=int_year
       )
       if education.institution:
@@ -352,6 +506,10 @@ class ResumeParser:
     if year_match:
       return int(year_match.group())
     return None
+
+  def _contains_contact(self, text: str) -> bool:
+    lower = text.lower()
+    return any(re.search(pattern, lower) for pattern in _CONTACT_PATTERNS)
 
 
 def parse_resume(payload: ResumeParseRequest) -> ResumeParseResponse:

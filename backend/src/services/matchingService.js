@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import MatchResult from '../models/MatchResult.js';
 import { ensureMatchResultPayload } from './traceMatching.js';
+import { getEffectiveParsedData } from './resumeCorrectionService.js';
 
 /**
  * Deterministic heuristic scoring helpers.
@@ -33,15 +34,18 @@ export const computeSkillScore = (required = [], candidate = []) => {
 };
 
 export const computeExperienceScore = (job, resume) => {
+  const parsedData = getEffectiveParsedData(resume);
   const jobSeniority = job.metadata?.get?.('seniority') || job.metadata?.seniority;
-  const resumeExperience = resume?.parsedData?.experience || [];
-  const years = resumeExperience.reduce((total, item) => {
+  const resumeExperience = parsedData?.experience || [];
+  const computedYears = resumeExperience.reduce((total, item) => {
     if (!item.startDate || !item.endDate) return total;
     const start = new Date(item.startDate);
     const end = new Date(item.endDate);
     const diffYears = (end - start) / (1000 * 60 * 60 * 24 * 365);
     return total + Math.max(diffYears, 0);
   }, 0);
+  const years =
+    typeof parsedData?.totalYearsExperience === 'number' ? parsedData.totalYearsExperience : computedYears;
 
   let score = 0.5;
   if (years) {
@@ -56,7 +60,8 @@ export const computeExperienceScore = (job, resume) => {
 
 export const computeLocationScore = (job, resume) => {
   const jobLocation = (job.location || '').toLowerCase();
-  const resumeLocation = ((resume.metadata?.location || resume.parsedData?.location || '')).toLowerCase();
+  const parsedData = getEffectiveParsedData(resume);
+  const resumeLocation = ((resume.metadata?.location || parsedData?.location || '')).toLowerCase();
   if (!jobLocation || !resumeLocation) {
     return { score: 0.5, match: 'unknown' };
   }
@@ -142,13 +147,15 @@ export const scoreCandidateForJob = async ({
   });
   console.log('[TRACE] TRACE_MATCHING env =', process.env.TRACE_MATCHING);
 
+  const parsedData = getEffectiveParsedData(resume);
+
   if (String(process.env.TRACE_MATCHING || '').toLowerCase() === 'true') {
     console.log('[TRACE][BACKEND_HEURISTIC_INPUT]', {
       jobRequiredSkills: job.requiredSkills,
-      resumeSkillsCount: resume.parsedData?.skills?.length ?? 0,
-      resumeSkills: resume.parsedData?.skills ?? [],
-      resumeExperienceCount: resume.parsedData?.experience?.length ?? 0,
-      resumeLocation: resume.parsedData?.location ?? resume.metadata?.location ?? null,
+      resumeSkillsCount: parsedData?.skills?.length ?? 0,
+      resumeSkills: parsedData?.skills ?? [],
+      resumeExperienceCount: parsedData?.experience?.length ?? 0,
+      resumeLocation: parsedData?.location ?? resume.metadata?.location ?? null,
       resumeTags: resume.metadata?.tags ?? []
     });
   }
@@ -173,7 +180,7 @@ export const scoreCandidateForJob = async ({
     }
   }
 
-  const skillFeatures = computeSkillScore(job.requiredSkills, resume.parsedData?.skills);
+  const skillFeatures = computeSkillScore(job.requiredSkills, parsedData?.skills);
   const experienceFeatures = computeExperienceScore(job, resume);
   const locationFeatures = computeLocationScore(job, resume);
   const tagFeatures = computeTagScore(job, resume);

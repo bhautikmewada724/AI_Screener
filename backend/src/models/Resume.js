@@ -29,6 +29,9 @@ const parsedDataSchema = new Schema(
       type: [String],
       default: []
     },
+    totalYearsExperience: {
+      type: Number
+    },
     experience: {
       type: [experienceSchema],
       default: []
@@ -73,6 +76,21 @@ const resumeSchema = new Schema(
     parsedData: {
       type: parsedDataSchema,
       default: () => ({})
+    },
+    parsedDataCorrected: {
+    type: Schema.Types.Mixed,
+      default: undefined
+    },
+    isCorrected: {
+      type: Boolean,
+      default: false
+    },
+    correctedAt: {
+      type: Date,
+      default: null
+    },
+    correctedDataVersion: {
+      type: String
     }
   },
   {

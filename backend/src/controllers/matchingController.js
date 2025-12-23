@@ -2,6 +2,7 @@ import JobDescription from '../models/JobDescription.js';
 import Resume from '../models/Resume.js';
 import { ensureMatchResult } from '../services/hrWorkflowService.js';
 import { scoreCandidateForJob } from '../services/matchingService.js';
+import { getEffectiveParsedData } from '../services/resumeCorrectionService.js';
 
 export const getRankedMatches = async (req, res, next) => {
   try {
@@ -34,20 +35,23 @@ export const getRankedMatches = async (req, res, next) => {
 
     const sorted = matches.sort((a, b) => b.match.matchScore - a.match.matchScore).slice(0, limit);
 
-    const payload = sorted.map(({ match, resume }) => ({
-      matchId: match._id,
-      resumeId: resume._id,
-      candidateId: resume.userId,
-      matchScore: match.matchScore,
-      matchedSkills: match.matchedSkills,
-      explanation: match.explanation,
-      missingSkills: match.missingSkills,
-      embeddingSimilarity: match.embeddingSimilarity,
-      scoreBreakdown: match.scoreBreakdown,
-      scoringConfigVersion: match.scoringConfigVersion,
-      resumeSummary: resume.parsedData?.summary,
-      resumeSkills: resume.parsedData?.skills
-    }));
+    const payload = sorted.map(({ match, resume }) => {
+      const parsedData = getEffectiveParsedData(resume);
+      return {
+        matchId: match._id,
+        resumeId: resume._id,
+        candidateId: resume.userId,
+        matchScore: match.matchScore,
+        matchedSkills: match.matchedSkills,
+        explanation: match.explanation,
+        missingSkills: match.missingSkills,
+        embeddingSimilarity: match.embeddingSimilarity,
+        scoreBreakdown: match.scoreBreakdown,
+        scoringConfigVersion: match.scoringConfigVersion,
+        resumeSummary: parsedData?.summary,
+        resumeSkills: parsedData?.skills
+      };
+    });
 
     res.json({ data: payload });
   } catch (error) {
