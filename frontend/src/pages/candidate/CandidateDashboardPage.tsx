@@ -11,12 +11,6 @@ import ErrorState from '../../components/ui/ErrorState';
 import Skeleton from '../../components/ui/Skeleton';
 import type { ApplicationRecord, RecommendedJob } from '../../types/api';
 
-const scoreBucket = (score: number) => {
-  if (score >= 0.75) return { label: 'Strong', className: 'bg-emerald-100 text-emerald-700' };
-  if (score >= 0.5) return { label: 'Medium', className: 'bg-amber-100 text-amber-700' };
-  return { label: 'Weak', className: 'bg-slate-100 text-slate-600' };
-};
-
 const CandidateDashboardPage = () => {
   const { token } = useAuth();
 
@@ -175,14 +169,9 @@ const CandidateDashboardPage = () => {
                         {rec.job?.location || rec.jobSnapshot?.location || 'Remote / Flexible'}
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <div
-                        className={`rounded-full px-2 py-1 text-xs font-semibold ${scoreBucket(rec.score).className}`}
-                      >
-                        {scoreBucket(rec.score).label}
-                      </div>
-                      <div className="text-xs text-brand-ash">{Math.round(rec.score * 100)}%</div>
-                    </div>
+                    <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
+                      Recommended
+                    </span>
                   </div>
                   {rec.reason && <div className="mt-1 text-xs text-brand-navy">{rec.reason}</div>}
                 </div>

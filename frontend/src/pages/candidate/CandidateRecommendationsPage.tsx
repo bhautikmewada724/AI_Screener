@@ -16,12 +16,6 @@ import Skeleton from '../../components/ui/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
 import type { Recommendation, RecommendedJob } from '../../types/api';
 
-const strengthBucket = (score: number) => {
-  if (score >= 0.75) return { label: 'Strong', className: 'bg-emerald-100 text-emerald-700' };
-  if (score >= 0.5) return { label: 'Medium', className: 'bg-amber-100 text-amber-700' };
-  return { label: 'Weak', className: 'bg-slate-100 text-slate-600' };
-};
-
 const CandidateRecommendationsPage = () => {
   const { token } = useAuth();
   const queryClient = useQueryClient();
@@ -151,7 +145,6 @@ const RecommendationCard = ({
   const jobData = job.job || job.jobSnapshot;
   const location = jobData?.location || 'Remote / Flexible';
   const tags = (jobData?.requiredSkills || jobData?.niceToHaveSkills || []).slice(0, 4);
-  const bucket = strengthBucket(job.score);
 
   const handleDismiss = (jobId: string) => {
     setIsDismissing(true);
@@ -170,10 +163,9 @@ const RecommendationCard = ({
       }
       description={
         <div className="flex items-center gap-2">
-          <span className={`rounded-full px-2 py-1 text-xs font-semibold ${bucket.className}`}>
-            {bucket.label}
+          <span className="text-xs text-brand-ash">
+            {job.reason || 'Matched to your profile'}
           </span>
-          <span className="text-xs text-brand-ash">{Math.round(job.score * 100)}% match</span>
         </div>
       }
       actions={

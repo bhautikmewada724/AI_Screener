@@ -49,6 +49,14 @@ const applicationSchema = new Schema(
       max: 1,
       default: 0
     },
+    matchLabel: {
+      type: String,
+      enum: ['Weak', 'Medium', 'Strong', null],
+      default: null
+    },
+    matchComputedAt: {
+      type: Date
+    },
     matchedSkills: {
       type: [String],
       default: []

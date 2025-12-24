@@ -29,7 +29,9 @@ const serializeRecommendation = (doc) => {
     id: doc._id?.toString?.(),
     candidateId: doc.candidateId?.toString?.(),
     generatedAt: doc.generatedAt,
-    recommendedJobs: (doc.recommendedJobs || []).map((entry) => {
+    recommendedJobs: (doc.recommendedJobs || [])
+      .filter((entry) => entry.status !== 'applied')
+      .map((entry) => {
       const jobId = entry.jobId?._id?.toString?.() || entry.jobId?.toString?.();
       const snapshotJob =
         !toJobShape(entry.jobId) && entry.jobSnapshot
@@ -44,8 +46,6 @@ const serializeRecommendation = (doc) => {
           : undefined;
       return {
         jobId,
-        score: entry.score,
-        rank: entry.rank,
         reason: entry.reason,
         status: entry.status,
         feedbackReason: entry.feedbackReason,
@@ -56,6 +56,8 @@ const serializeRecommendation = (doc) => {
     })
   };
 };
+
+export { serializeRecommendation };
 
 export const getCandidateRecommendations = async (req, res, next) => {
   try {

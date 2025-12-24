@@ -1,11 +1,18 @@
 import { randomUUID } from 'crypto';
 import Application from '../models/Application.js';
 import JobDescription from '../models/JobDescription.js';
+import Recommendation from '../models/Recommendation.js';
 import Resume from '../models/Resume.js';
 import { parseResume as parseResumeAI } from '../services/aiService.js';
 import { transformAiResumeToParsedData } from '../services/aiTransformers.js';
-import { ensureMatchResult, recordAuditEvent } from '../services/hrWorkflowService.js';
-import { clearMatchResultCache } from '../services/matchingService.js';
+import * as hrWorkflowService from '../services/hrWorkflowService.js';
+import * as matchingService from '../services/matchingService.js';
+
+const deriveMatchLabel = (score = 0) => {
+  if (score >= 0.75) return 'Strong';
+  if (score >= 0.5) return 'Medium';
+  return 'Weak';
+};
 
 /**
  * Candidate-facing application flows for submitting interest in a job.
@@ -56,7 +63,7 @@ export const applyToJob = async (req, res, next) => {
     }
 
     if (existingApplication) {
-      return res.status(409).json({ message: 'You have already applied to this job.' });
+      return res.status(200).json(existingApplication);
     }
 
     const needsReparse =
@@ -102,7 +109,11 @@ export const applyToJob = async (req, res, next) => {
           resumeId: resume._id
         });
       }
-      await clearMatchResultCache({ jobId: job._id, resumeId: resume._id, requestId });
+      await matchingService.clearMatchResultCache({
+        jobId: job._id,
+        resumeId: resume._id,
+        requestId
+      });
     }
 
     if (traceEnabled && resume?._id && resumeId && String(resume._id) !== String(resumeId)) {
@@ -121,14 +132,20 @@ export const applyToJob = async (req, res, next) => {
       });
     }
 
-    const matchResult = await ensureMatchResult({ job, resume, requestId });
+    const matchResult = await hrWorkflowService.ensureMatchResult({ job, resume, requestId });
+    const normalizedScore =
+      typeof matchResult.matchScore === 'number' ? matchResult.matchScore : 0;
+    const matchLabel = deriveMatchLabel(normalizedScore);
+    const matchComputedAt = new Date();
 
     const application = await Application.create({
       jobId,
       candidateId: req.user.id,
       resumeId,
       matchResultId: matchResult._id,
-      matchScore: matchResult.matchScore,
+      matchScore: normalizedScore,
+      matchLabel,
+      matchComputedAt,
       matchedSkills: matchResult.matchedSkills,
       matchExplanation: matchResult.explanation,
       scoreBreakdown: matchResult.scoreBreakdown,
@@ -136,13 +153,31 @@ export const applyToJob = async (req, res, next) => {
       source: 'candidate_applied'
     });
 
-    await recordAuditEvent({
+    await hrWorkflowService.recordAuditEvent({
       applicationId: application._id,
       actorId: req.user.id,
       action: 'application_submitted',
       context: { jobId },
       orgId: req.orgId || job.orgId
     });
+
+    // Best-effort: mark any matching recommendation entry as applied
+    try {
+      await Recommendation.updateOne(
+        { candidateId: req.user.id },
+        {
+          $set: { 'recommendedJobs.$[elem].status': 'applied' },
+          $pull: { recommendedJobs: { jobId } }
+        },
+        { arrayFilters: [{ 'elem.jobId': jobId }] }
+      );
+    } catch (recError) {
+      console.error('[WARN] failed to mark recommendation as applied', {
+        candidateId: req.user.id,
+        jobId,
+        error: recError.message
+      });
+    }
 
     return res.status(201).json(application);
   } catch (error) {
