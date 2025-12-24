@@ -9,7 +9,7 @@ import SectionCard from '../../components/ui/SectionCard';
 import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
 import Skeleton from '../../components/ui/Skeleton';
-import type { JobDescription, ResumePayload } from '../../types/api';
+import type { JobDescription, Recommendation, ResumePayload } from '../../types/api';
 
 const CandidateJobDetailPage = () => {
   const { jobId = '' } = useParams();
@@ -34,10 +34,18 @@ const CandidateJobDetailPage = () => {
 
   const applyMutation = useMutation({
     mutationFn: (payload: { jobId: string; resumeId: string }) => applyToJob(payload, token),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       setApplyError(null);
       setApplyMessage('Application submitted successfully.');
+      queryClient.setQueryData<Recommendation | undefined>(['candidate-recommendations'], (current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          recommendedJobs: current.recommendedJobs.filter((job) => job.jobId !== variables.jobId)
+        };
+      });
       queryClient.invalidateQueries({ queryKey: ['candidate-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['candidate-recommendations'] });
       navigate('/candidate/applications');
     },
     onError: (error: Error) => {

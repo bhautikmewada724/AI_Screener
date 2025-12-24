@@ -93,7 +93,9 @@ export interface ApplicationRecord {
   status: 'applied' | 'in_review' | 'shortlisted' | 'rejected' | 'hired';
   reviewStage?: string;
   source?: ApplicationSource;
-  matchScore: number;
+  matchScore?: number;
+  matchLabel?: 'Weak' | 'Medium' | 'Strong';
+  matchComputedAt?: string;
   matchedSkills: string[];
   matchExplanation?: MatchExplanation | ExplainabilityPayload | string | null;
   missingSkills?: string[];
@@ -191,8 +193,6 @@ export interface UserAuditEvent {
 
 export interface RecommendedJob {
   jobId: string;
-  score: number;
-  rank: number;
   reason?: string;
   status: 'shown' | 'saved' | 'dismissed' | 'applied';
   feedbackReason?: string;

@@ -8,6 +8,11 @@ import { getEffectiveParsedData } from './resumeCorrectionService.js';
 const TTL_MINUTES = parseInt(process.env.RECOMMENDATION_TTL_MINUTES || '360', 10);
 const TTL_MS = TTL_MINUTES * 60 * 1000;
 
+const loadAppliedJobIds = async (candidateId) => {
+  const applications = await Application.find({ candidateId }).select('jobId').lean();
+  return new Set(applications.map((app) => app.jobId?.toString()).filter(Boolean));
+};
+
 const pickField = (obj = {}, ...keys) => {
   for (const key of keys) {
     if (typeof obj[key] !== 'undefined' && obj[key] !== null) {
@@ -177,7 +182,7 @@ export const getOrGenerateRecommendations = async (candidateId, { forceRefresh =
   const current = await Recommendation.findOne({ candidateId }).populate('recommendedJobs.jobId');
 
   if (!forceRefresh && current && !isStale(current)) {
-    return current;
+    return syncAppliedJobs(candidateId, current);
   }
 
   return generateRecommendations(candidateId);
@@ -223,4 +228,40 @@ export const applyRecommendationFeedback = async (candidateId, { jobId, feedback
   ).populate('recommendedJobs.jobId');
 
   return doc;
+};
+
+/**
+ * Ensures applied jobs are marked as applied and excluded from returned recommendations.
+ */
+export const syncAppliedJobs = async (candidateId, recommendationDoc) => {
+  if (!recommendationDoc) return recommendationDoc;
+
+  const appliedIds = await loadAppliedJobIds(candidateId);
+  if (!appliedIds.size) {
+    const filtered = (recommendationDoc.recommendedJobs || []).filter((entry) => entry.status !== 'applied');
+    return { ...(recommendationDoc.toObject?.() ?? recommendationDoc), recommendedJobs: filtered };
+  }
+
+  const updatedJobs = (recommendationDoc.recommendedJobs || []).map((entry) => {
+    const jobId = entry.jobId?._id?.toString?.() || entry.jobId?.toString?.();
+    if (jobId && appliedIds.has(jobId)) {
+      return { ...(entry.toObject?.() ?? entry), status: 'applied' };
+    }
+    return entry;
+  });
+
+  const filtered = updatedJobs.filter((entry) => entry.status !== 'applied');
+
+  // Best-effort persistence
+  try {
+    await Recommendation.updateOne(
+      { candidateId },
+      { $set: { 'recommendedJobs.$[elem].status': 'applied' } },
+      { arrayFilters: [{ 'elem.jobId': { $in: Array.from(appliedIds) } }] }
+    );
+  } catch (error) {
+    console.error('[WARN] failed to mark applied recommendations', { candidateId, error: error.message });
+  }
+
+  return { ...(recommendationDoc.toObject?.() ?? recommendationDoc), recommendedJobs: filtered };
 };
