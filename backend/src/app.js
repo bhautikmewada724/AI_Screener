@@ -17,6 +17,8 @@ import applicationRouter from './routes/applicationRoutes.js';
 import adminRouter from './routes/adminRoutes.js';
 import matchingRouter from './routes/matchingRoutes.js';
 import recommendationRouter from './routes/recommendationRoutes.js';
+import atsRouter from './routes/atsRoutes.js';
+import devAuditRouter from './routes/devAuditRoutes.js';
 import buildSwaggerSpec from './swagger.js';
 
 dotenv.config();
@@ -43,6 +45,8 @@ app.use('/hr', hrWorkflowRouter);
 app.use('/admin', adminRouter);
 app.use('/matching', matchingRouter);
 app.use('/candidate', recommendationRouter);
+app.use('/', atsRouter);
+app.use('/', devAuditRouter);
 
 // Swagger docs
 const serverUrl = process.env.API_BASE_URL || `http://localhost:${PORT}`;

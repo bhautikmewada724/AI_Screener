@@ -4,6 +4,8 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from models.rse import JDScoreBreakdown, RequirementResult
+
 
 Severity = Literal['critical', 'warning', 'info']
 FindingCode = Literal[
@@ -94,6 +96,7 @@ class ScoreBlock(BaseModel):
   atsReadabilityScore: int = Field(..., ge=0, le=100)
   keywordMatchScore: int = Field(..., ge=0, le=100)
   evidenceScore: int = Field(..., ge=0, le=100)
+  jdFitScore: float = Field(..., ge=0, le=100)
 
 
 class ATSScanResponse(BaseModel):
@@ -102,6 +105,8 @@ class ATSScanResponse(BaseModel):
   resumeId: Optional[str] = None
 
   overall: ScoreBlock
+  jdScore: JDScoreBreakdown
+  requirementResults: List[RequirementResult] = Field(default_factory=list)
   formatFindings: List[Finding] = Field(default_factory=list)
   keywordAnalysis: KeywordAnalysis = Field(default_factory=KeywordAnalysis)
   skills: SkillsAnalysis = Field(default_factory=SkillsAnalysis)

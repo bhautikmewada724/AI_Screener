@@ -9,7 +9,11 @@ const originalFind = Application.find;
 const originalUpdateOne = Recommendation.updateOne;
 
 test('syncAppliedJobs filters out applied jobs from cached recommendations', async () => {
-  Application.find = async () => [{ jobId: 'job1' }];
+  Application.find = () => ({
+    select: () => ({
+      lean: async () => [{ jobId: 'job1' }]
+    })
+  });
   let updateCalled = false;
   Recommendation.updateOne = async () => {
     updateCalled = true;

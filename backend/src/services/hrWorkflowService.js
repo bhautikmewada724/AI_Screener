@@ -9,6 +9,8 @@ import ReviewNote from '../models/ReviewNote.js';
 import { matchResumeToJob } from './aiService.js';
 import { mergeWithDefaults } from './scoringConfig.js';
 import { getEffectiveParsedData } from './resumeCorrectionService.js';
+import { normalizeSkillPhrases } from './skillOntologyService.js';
+import { buildResumeTextFromParsed, ensureResumeTextFields } from './resumeTextService.js';
 
 /**
  * Shared helpers for HR workflow controllers to avoid duplicating ownership checks
@@ -128,7 +130,7 @@ export const normalizeAiMatchResponse = (aiResponse = {}) => {
   };
 };
 
-export const ensureMatchResult = async ({ job, resume, forceRefresh = false, requestId: incomingRequestId }) => {
+const ensureMatchResultBaseImpl = async ({ job, resume, forceRefresh = false, requestId: incomingRequestId }) => {
   const tracingEnabled = isTraceEnabled();
   const requestId = incomingRequestId || randomUUID();
   if (tracingEnabled) {
@@ -163,24 +165,21 @@ export const ensureMatchResult = async ({ job, resume, forceRefresh = false, req
 
   const scoringConfig = mergeWithDefaults(job.scoringConfig || {});
   const parsedData = getEffectiveParsedData(resume);
-  const resumeSkills = Array.isArray(parsedData?.skills) ? parsedData.skills : [];
-  const jobRequiredSkills = Array.isArray(job.requiredSkills) ? job.requiredSkills : [];
-  const resumeTextParts = [];
-  if (parsedData?.summary) resumeTextParts.push(parsedData.summary);
-  if (resumeSkills.length) resumeTextParts.push(resumeSkills.join(', '));
-  if (Array.isArray(parsedData?.experience)) {
-    const expSummaries = parsedData.experience
-      .map((item) => [item.role, item.company, item.duration].filter(Boolean).join(' '))
-      .filter(Boolean);
-    if (expSummaries.length) resumeTextParts.push(expSummaries.join(' | '));
+  const resumeSkillsRaw = Array.isArray(parsedData?.skills) ? parsedData.skills : [];
+  const jobRequiredSkillsRaw = Array.isArray(job.requiredSkills) ? job.requiredSkills : [];
+  const { recognized: jdRecognized } = await normalizeSkillPhrases(jobRequiredSkillsRaw, 'jd');
+  const normalizedJobSkills = jdRecognized.map((s) => s.displayName || s.canonicalId);
+  const { recognized: resumeRecognized } = await normalizeSkillPhrases(resumeSkillsRaw, 'resume');
+  const normalizedResumeSkills = resumeRecognized.map((s) => s.displayName || s.canonicalId);
+  const resumeSkills = normalizedResumeSkills.length ? normalizedResumeSkills : resumeSkillsRaw;
+  const jobRequiredSkills = normalizedJobSkills.length ? normalizedJobSkills : jobRequiredSkillsRaw;
+  const resumeText =
+    (typeof resume.text === 'string' && resume.text.trim()) ||
+    buildResumeTextFromParsed(parsedData, {});
+  if (!resume.textLength && resumeText) {
+    ensureResumeTextFields(resume, resumeText);
+    await resume.save();
   }
-  if (Array.isArray(parsedData?.education)) {
-    const eduSummaries = parsedData.education
-      .map((item) => [item.institution, item.degree, item.graduationYear].filter(Boolean).join(' '))
-      .filter(Boolean);
-    if (eduSummaries.length) resumeTextParts.push(eduSummaries.join(' | '));
-  }
-  const resumeText = resumeTextParts.filter(Boolean).join(' · ').trim();
   if (tracingEnabled) {
     console.log('[TRACE] scoring with parsedData', {
       requestId,
@@ -293,6 +292,13 @@ export const ensureMatchResult = async ({ job, resume, forceRefresh = false, req
   return matchResult;
 };
 
+let ensureMatchResultImpl = ensureMatchResultBaseImpl;
+
+export const ensureMatchResult = (...args) => ensureMatchResultImpl(...args);
+export const __setEnsureMatchResultImplForTest = (fn) => {
+  ensureMatchResultImpl = fn || ensureMatchResultBaseImpl;
+};
+
 export const refreshApplicationMatch = async (application) => {
   const [job, resume] = await Promise.all([
     JobDescription.findById(application.jobId),
@@ -318,13 +324,21 @@ export const refreshApplicationMatch = async (application) => {
   return { application, matchResult };
 };
 
-export const recordAuditEvent = async ({ applicationId, actorId, action, context = {}, orgId }) => {
+const recordAuditEventBaseImpl = async ({ applicationId, actorId, action, context = {}, orgId }) => {
   return AuditEvent.create({
     applicationId,
     actorId,
     action,
-    context
+    context,
+    orgId
   });
+};
+
+let recordAuditEventImpl = recordAuditEventBaseImpl;
+
+export const recordAuditEvent = (...args) => recordAuditEventImpl(...args);
+export const __setRecordAuditEventImplForTest = (fn) => {
+  recordAuditEventImpl = fn || recordAuditEventBaseImpl;
 };
 
 export const createReviewNote = async ({ applicationId, authorId, body, visibility }) => {

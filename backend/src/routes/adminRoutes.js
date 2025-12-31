@@ -9,6 +9,12 @@ import {
   updateUserRoleController,
   updateUserStatusController
 } from '../controllers/adminController.js';
+import {
+  listOntology,
+  listUnknown,
+  normalizeSkillsController,
+  promoteOntology
+} from '../controllers/skillOntologyAdminController.js';
 import { authenticate, authorizeRoles } from '../middlewares/authMiddleware.js';
 import { ROLES } from '../utils/roles.js';
 
@@ -192,6 +198,11 @@ router.patch('/users/:userId/status', adminGuard, updateUserStatusController);
  *         description: Aggregated statistics.
  */
 router.get('/stats/overview', adminGuard, getSystemOverviewController);
+
+router.get('/ontology', adminGuard, listOntology);
+router.get('/unknown-skills', adminGuard, listUnknown);
+router.post('/ontology/promote', adminGuard, promoteOntology);
+router.post('/ontology/normalize', adminGuard, normalizeSkillsController);
 
 export default router;
 

@@ -180,6 +180,87 @@ export interface AuditEventRecord {
   createdAt: string;
 }
 
+// ATS Scan types
+export type ATSeverity = 'critical' | 'warning' | 'info';
+
+export interface ATFinding {
+  severity: ATSeverity;
+  code: string;
+  message: string;
+  whyItMatters: string;
+  fix: string;
+}
+
+export interface ATMissingKeyword {
+  keyword: string;
+  importance: number;
+  jdEvidence: string[];
+  suggestedPlacement: 'Skills' | 'Experience' | 'Projects' | 'Summary';
+}
+
+export interface ATKeywordBucket {
+  matched: string[];
+  missing: ATMissingKeyword[];
+}
+
+export interface ATKeywordAnalysis {
+  required: ATKeywordBucket;
+  preferred: ATKeywordBucket;
+}
+
+export interface ATSynonymNote {
+  resumeTerm: string;
+  jdTerm: string;
+  treatedAsMatch: boolean;
+}
+
+export interface ATSkillsAnalysis {
+  matched: string[];
+  missingRequired: string[];
+  missingPreferred: string[];
+  synonymNotes: ATSynonymNote[];
+}
+
+export interface ATEvidenceGap {
+  requirement: string;
+  status: 'missing' | 'weak' | 'ok';
+  exampleFix: string;
+  whereToAdd: 'Experience' | 'Projects' | 'Summary';
+}
+
+export interface ATSectionFeedback {
+  section: 'Summary' | 'Skills' | 'Experience' | 'Projects' | 'Education' | 'Other';
+  severity: 'warning' | 'info';
+  message: string;
+  fix: string;
+}
+
+export interface ATRewriteStep {
+  priority: 'P0' | 'P1' | 'P2';
+  title: string;
+  action: string;
+  details: string;
+}
+
+export interface ATScoreBlock {
+  atsReadabilityScore: number;
+  keywordMatchScore: number;
+  evidenceScore: number;
+}
+
+export interface ATSScanResponse {
+  schemaVersion: string;
+  jobId?: string;
+  resumeId?: string;
+  overall: ATScoreBlock;
+  formatFindings: ATFinding[];
+  keywordAnalysis: ATKeywordAnalysis;
+  skills: ATSkillsAnalysis;
+  evidenceGaps: ATEvidenceGap[];
+  sectionFeedback: ATSectionFeedback[];
+  rewritePlan: ATRewriteStep[];
+}
+
 export interface UserAuditEvent {
   id: string;
   actorId?: string;

@@ -1,0 +1,38 @@
+[
+  {
+    "canonicalId": "python",
+    "displayName": "Python",
+    "aliases": ["python"],
+    "category": "language",
+    "updatedAt": "2025-01-01T00:00:00Z"
+  },
+  {
+    "canonicalId": "javascript",
+    "displayName": "JavaScript",
+    "aliases": ["javascript", "js"],
+    "category": "language",
+    "updatedAt": "2025-01-01T00:00:00Z"
+  },
+  {
+    "canonicalId": "nodejs",
+    "displayName": "Node.js",
+    "aliases": ["nodejs", "node js", "node.js"],
+    "category": "runtime",
+    "updatedAt": "2025-01-01T00:00:00Z"
+  },
+  {
+    "canonicalId": "mongodb",
+    "displayName": "MongoDB",
+    "aliases": ["mongodb"],
+    "category": "database",
+    "updatedAt": "2025-01-01T00:00:00Z"
+  },
+  {
+    "canonicalId": "rest",
+    "displayName": "REST",
+    "aliases": ["rest", "rest api", "rest apis"],
+    "category": "api",
+    "updatedAt": "2025-01-01T00:00:00Z"
+  }
+]
+

@@ -3,7 +3,8 @@ import type {
   ApplicationRecord,
   JobDescription,
   Recommendation,
-  ResumePayload
+  ResumePayload,
+  ATSScanResponse
 } from '../types/api';
 
 export const fetchMyResumes = (token?: string) => {
@@ -44,9 +45,11 @@ export const uploadCandidateResume = async (file: File, token?: string) => {
   return response.json() as Promise<{ resumeId: string; status: string }>;
 };
 
+type ParsedDataShape = NonNullable<ResumePayload['parsedData']>;
+
 export const updateResumeParsedData = (
   resumeId: string,
-  payload: Partial<Pick<ResumePayload['parsedData'], 'skills' | 'totalYearsExperience' | 'location'>>,
+  payload: Partial<Pick<ParsedDataShape, 'skills' | 'totalYearsExperience' | 'location'>>,
   token?: string
 ) => {
   return apiRequest<{ success: boolean; resume: ResumePayload }>(`/resume/${resumeId}/parsedData`, {
@@ -66,6 +69,25 @@ export const fetchOpenJobs = (params: { page?: number; limit?: number; search?: 
 
 export const fetchOpenJobById = (jobId: string, token?: string) => {
   return apiRequest<JobDescription>(`/jobs/${jobId}`, { token });
+};
+
+export const atsScanJob = async (jobId: string, token?: string) => {
+  try {
+    return await apiRequest<ATSScanResponse>(`/api/jobs/${jobId}/ats-scan`, {
+      method: 'POST',
+      token
+    });
+  } catch (error) {
+    if (error instanceof ApiError) {
+      if (error.status === 404) {
+        throw new ApiError('Resume not found for this job. Upload a resume to run ATS scan.', 404, error.code, error.details);
+      }
+      if (error.status === 503) {
+        throw new ApiError('ATS scan service is temporarily unavailable. Try again soon.', 503, error.code, error.details);
+      }
+    }
+    throw error;
+  }
 };
 
 export const applyToJob = (payload: { jobId: string; resumeId: string }, token?: string) => {

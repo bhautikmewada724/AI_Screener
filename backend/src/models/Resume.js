@@ -73,6 +73,27 @@ const resumeSchema = new Schema(
       enum: ['uploaded', 'processing', 'parsed', 'failed'],
       default: 'uploaded'
     },
+    text: {
+      type: String,
+      default: ''
+    },
+    textLength: {
+      type: Number,
+      default: 0
+    },
+    textHash: {
+      type: String,
+      default: ''
+    },
+    textStatus: {
+      type: String,
+      enum: ['ok', 'failed', 'unset'],
+      default: 'unset'
+    },
+    extractionError: {
+      type: Boolean,
+      default: false
+    },
     parsedData: {
       type: parsedDataSchema,
       default: () => ({})

@@ -24,6 +24,7 @@ from models.ats import (
   SkillsAnalysis,
   SynonymNote,
 )
+from services.rse_engine import build_requirements, calculate_scores, evaluate_requirements
 from models.job import JobDescriptionRequest
 from models.resume import ResumeParseRequest
 from services.jd_parser import parse_job_description
@@ -103,32 +104,91 @@ class ATSAnalyzer:
     format_findings = self._build_format_findings(format_stats)
     ats_readability_score = self._score_readability(format_findings, format_stats)
 
-    # Skills (canonicalized)
-    resume_skills = normalize_skill_list(resume_parse.skills)
-    required_skills = normalize_skill_list(jd_parse.required_skills)
-    preferred_skills = normalize_skill_list(jd_parse.nice_to_have_skills)
+    # RSE: build & evaluate requirements once, reuse across outputs
+    requirements = build_requirements(jd_text, jd_parse)
+    requirement_results = evaluate_requirements(requirements, resume_text, resume_parse)
+    jd_score = calculate_scores(requirements, requirement_results)
 
-    matched_skills, missing_required, missing_preferred, synonym_notes = self._compare_skills(
-      resume_skills, required_skills, preferred_skills, resume_text
-    )
+    req_index = {req.id: req for req in requirements}
 
-    # Keyword extraction: lightweight, plus JD skills.
-    required_keywords, preferred_keywords = self._extract_keywords(jd_text)
-    # merge skills into keyword sets
-    required_keywords = self._merge_keywords(required_keywords, required_skills)
-    preferred_keywords = self._merge_keywords(preferred_keywords, preferred_skills)
+    matched_skills: List[str] = []
+    missing_required: List[str] = []
+    missing_preferred: List[str] = []
+    for res in requirement_results:
+      req = req_index.get(res.requirementId)
+      if not req or req.type != 'skill':
+        continue
+      if res.status == 'MISSING':
+        if req.isRequired:
+          missing_required.append(req.rawText)
+        else:
+          missing_preferred.append(req.rawText)
+      else:
+        matched_skills.append(req.rawText)
 
-    kw_required_bucket = self._bucket_keywords(required_keywords, resume_text)
-    kw_preferred_bucket = self._bucket_keywords(preferred_keywords, resume_text)
+    def _bucket(req_filter):
+      matched: List[str] = []
+      missing: List[MissingKeyword] = []
+      for res in requirement_results:
+        req = req_index.get(res.requirementId)
+        if not req or not req_filter(req):
+          continue
+        if res.status == 'MISSING':
+          missing.append(
+            MissingKeyword(
+              keyword=req.rawText,
+              importance=5 if req.isRequired else 3,
+              jdEvidence=[req.rawText],
+              suggestedPlacement='Experience' if req.isRequired else 'Skills'
+            )
+          )
+        else:
+          matched.append(req.rawText)
+      return KeywordBucket(matched=list(dict.fromkeys(matched)), missing=missing[:25])
 
-    keyword_match_score = self._score_keyword_match(kw_required_bucket, kw_preferred_bucket)
+    kw_required_bucket = _bucket(lambda r: r.isRequired)
+    kw_preferred_bucket = _bucket(lambda r: not r.isRequired)
 
-    # Evidence: are required skills mentioned in experience/projects text?
-    evidence_gaps, evidence_score = self._check_evidence(jd_text, resume_text, required_skills)
+    total_required = len(kw_required_bucket.matched) + len(kw_required_bucket.missing)
+    keyword_match_score = int(round((len(kw_required_bucket.matched) / (total_required or 1)) * 100))
+
+    evidence_gaps: List[EvidenceGap] = []
+    for res in requirement_results:
+      req = req_index.get(res.requirementId)
+      if not req or not req.isRequired or req.type != 'skill':
+        continue
+      if res.status == 'WEAK':
+        evidence_gaps.append(
+          EvidenceGap(
+            requirement=f'Show evidence for {req.rawText}',
+            status='weak',
+            exampleFix=(
+              f'Add a bullet describing how you used {req.rawText} with outcomes. '
+              'Use real work only; avoid fabrication.'
+            ),
+            whereToAdd='Experience'
+          )
+        )
+      if res.status == 'MISSING':
+        evidence_gaps.append(
+          EvidenceGap(
+            requirement=f'Missing required skill: {req.rawText}',
+            status='missing',
+            exampleFix=(
+              f'Only add {req.rawText} if you truly have it. '
+              'List it in Skills and add one supporting bullet in Experience/Projects.'
+            ),
+            whereToAdd='Experience'
+          )
+        )
+
+    evidence_score = int(round(jd_score.evidenceStrengthScore))
 
     section_feedback = self._section_feedback(resume_text)
 
     rewrite_plan = self._rewrite_plan(format_findings, kw_required_bucket, evidence_gaps)
+
+    synonym_notes: List[SynonymNote] = []
 
     response = ATSScanResponse(
       jobId=payload.job_id,
@@ -136,8 +196,11 @@ class ATSAnalyzer:
       overall=ScoreBlock(
         atsReadabilityScore=ats_readability_score,
         keywordMatchScore=keyword_match_score,
-        evidenceScore=evidence_score
+        evidenceScore=evidence_score,
+        jdFitScore=jd_score.jdFitScore
       ),
+      jdScore=jd_score,
+      requirementResults=requirement_results,
       formatFindings=format_findings,
       keywordAnalysis=KeywordAnalysis(
         required=kw_required_bucket,
@@ -163,10 +226,12 @@ class ATSAnalyzer:
         'missing_required': len(missing_required),
         'missing_preferred': len(missing_preferred),
         'evidence_gaps': len(evidence_gaps),
+        'rse_counts': jd_score.counts,
         'scores': {
           'readability': ats_readability_score,
           'keyword': keyword_match_score,
-          'evidence': evidence_score
+          'evidence': evidence_score,
+          'jd_fit': jd_score.jdFitScore
         }
       }
     )

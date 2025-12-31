@@ -3,15 +3,42 @@ import Application from '../models/Application.js';
 import JobDescription from '../models/JobDescription.js';
 import Recommendation from '../models/Recommendation.js';
 import Resume from '../models/Resume.js';
-import { parseResume as parseResumeAI } from '../services/aiService.js';
+import { aiClients } from '../services/aiService.js';
 import { transformAiResumeToParsedData } from '../services/aiTransformers.js';
+import { buildResumeTextFromParsed, ensureResumeTextFields } from '../services/resumeTextService.js';
 import * as hrWorkflowService from '../services/hrWorkflowService.js';
 import * as matchingService from '../services/matchingService.js';
+import { isAuditEnabled } from '../utils/audit.js';
 
 const deriveMatchLabel = (score = 0) => {
   if (score >= 0.75) return 'Strong';
   if (score >= 0.5) return 'Medium';
   return 'Weak';
+};
+
+const sumWeights = (weights = {}) =>
+  Object.values(weights || {}).reduce((total, value) => total + (Number(value) || 0), 0);
+
+const extractRequirementCounts = (scoreBreakdown) => {
+  if (!scoreBreakdown || typeof scoreBreakdown !== 'object') return {};
+  const source =
+    scoreBreakdown.requirements ||
+    scoreBreakdown.requirementsSummary ||
+    scoreBreakdown.requirementsCounts ||
+    scoreBreakdown.requirements_counts ||
+    scoreBreakdown.counts ||
+    null;
+  if (!source || typeof source !== 'object') {
+    return { strong: 0, weak: 0, uncertain: 0, missing: 0, total: 0 };
+  }
+
+  return {
+    strong: source.strong ?? source.STRONG ?? source.strongCount ?? 0,
+    weak: source.weak ?? source.WEAK ?? source.weakCount ?? 0,
+    uncertain: source.uncertain ?? source.UNCERTAIN ?? source.uncertainCount ?? 0,
+    missing: source.missing ?? source.MISSING ?? source.missingCount ?? 0,
+    total: source.total ?? source.totalCount ?? 0
+  };
 };
 
 /**
@@ -24,6 +51,7 @@ export const applyToJob = async (req, res, next) => {
     const traceEnabled = String(process.env.TRACE_MATCHING || '').toLowerCase() === 'true';
     const clearCacheOnApply =
       String(process.env.MATCHRESULT_CLEAR_CACHE_ON_APPLY || '').toLowerCase() === 'true';
+    const auditEnabled = isAuditEnabled();
 
     if (traceEnabled) {
       console.log('[TRACE] applyToJob', {
@@ -70,9 +98,9 @@ export const applyToJob = async (req, res, next) => {
       !Array.isArray(resume.parsedData?.skills) ||
       resume.parsedData.skills.length < 5;
 
-    if (needsReparse) {
+    if (needsReparse || !resume.textLength) {
       try {
-        const aiParsed = await parseResumeAI({
+        const aiParsed = await aiClients.parseResume({
           file_path: resume.filePath,
           file_name: resume.originalFileName,
           user_id: req.user.id
@@ -81,6 +109,8 @@ export const applyToJob = async (req, res, next) => {
         resume.parsedData = transformed;
         resume.parsedAt = new Date();
         resume.parserVersion = 'ai-service/v1';
+        const resumeText = buildResumeTextFromParsed(transformed, aiParsed);
+        ensureResumeTextFields(resume, resumeText);
         await resume.save();
         if (traceEnabled) {
           console.log('[TRACE] resume re-parsed before apply', {
@@ -153,6 +183,27 @@ export const applyToJob = async (req, res, next) => {
       source: 'candidate_applied'
     });
 
+    if (auditEnabled) {
+      const requirementCounts = extractRequirementCounts(matchResult.scoreBreakdown);
+      const scorePercent = Number.isFinite(normalizedScore) ? normalizedScore * 100 : null;
+      console.log('[APPLY][AUDIT]', {
+        requestId,
+        jobId: job._id?.toString(),
+        resumeId: resume._id?.toString(),
+        scoreRaw: normalizedScore,
+        scorePercent,
+        requirementsCount: requirementCounts.total ?? job.requiredSkills?.length ?? null,
+        totalWeight: sumWeights(job.scoringConfig?.weights),
+        requirementCounts: {
+          strong: requirementCounts.strong,
+          weak: requirementCounts.weak,
+          uncertain: requirementCounts.uncertain,
+          missing: requirementCounts.missing
+        },
+        hasScoreBreakdown: Boolean(matchResult.scoreBreakdown)
+      });
+    }
+
     await hrWorkflowService.recordAuditEvent({
       applicationId: application._id,
       actorId: req.user.id,
@@ -179,7 +230,28 @@ export const applyToJob = async (req, res, next) => {
       });
     }
 
-    return res.status(201).json(application);
+    const requirementCounts = extractRequirementCounts(matchResult.scoreBreakdown);
+    const auditPayload = auditEnabled
+      ? {
+          resumeId,
+          jobId,
+          scorePercent: Number.isFinite(normalizedScore) ? normalizedScore * 100 : null,
+          scoreRaw: normalizedScore,
+          requirementsCount: requirementCounts.total ?? job.requiredSkills?.length ?? null,
+          totalWeight: sumWeights(job.scoringConfig?.weights),
+          strongCount: requirementCounts.strong ?? null,
+          weakCount: requirementCounts.weak ?? null,
+          uncertainCount: requirementCounts.uncertain ?? null,
+          missingCount: requirementCounts.missing ?? null
+        }
+      : null;
+
+    const responsePayload =
+      auditPayload && auditEnabled
+        ? { ...(application.toObject?.() ?? application), audit: auditPayload }
+        : application;
+
+    return res.status(201).json(responsePayload);
   } catch (error) {
     next(error);
   }

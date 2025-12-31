@@ -36,9 +36,9 @@ def test_ats_scan_returns_missing_skills_and_scores():
   result = ats_scan(payload)
 
   assert result.overall.atsReadabilityScore >= 0
-  assert result.overall.keywordMatchScore >= 0
+  assert result.overall.jdFitScore <= 100
   assert 'PostgreSQL' in result.skills.missingRequired
-  assert any(m.keyword.lower() in {'postgresql', 'kafka', 'redis'} for m in result.keywordAnalysis.required.missing + result.keywordAnalysis.preferred.missing)
+  assert any(r.status == 'MISSING' for r in result.requirementResults)
 
 
 def test_ats_scan_flags_scanned_pdf(tmp_path: Path):
@@ -84,6 +84,5 @@ def test_evidence_gap_marks_weak_and_missing():
 
   result = ats_scan(payload)
 
-  statuses = {gap.requirement: gap.status for gap in result.evidenceGaps}
   assert any(gap.status == 'weak' and 'Python' in gap.requirement for gap in result.evidenceGaps)
   assert any(gap.status == 'missing' and 'Kubernetes' in gap.requirement for gap in result.evidenceGaps)
