@@ -147,13 +147,14 @@ export const transformAiResumeToParsedData = (aiPayload = {}) => {
         company = parts.join(',').trim();
       }
 
-      if (!company || !role) return null;
+      if (!company && !role) return null;
 
       return {
-        company,
-        role,
+        company: company || role || '',
+        role: role || company || '',
         location,
         duration: durationText || item.description,
+        description: item.description || durationText || undefined,
         startDate,
         endDate
       };
@@ -162,9 +163,6 @@ export const transformAiResumeToParsedData = (aiPayload = {}) => {
       if (!entry) return false;
       // Drop bullet-style sentences
       if (VERB_LINE.test(entry.company) || VERB_LINE.test(entry.role)) return false;
-      // Keep only entries with non-trivial company/role
-      if (!/\s/.test(entry.company)) return false;
-      if (!/\s/.test(entry.role)) return false;
       return true;
     })
     .slice(0, 5);

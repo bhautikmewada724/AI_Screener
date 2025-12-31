@@ -1,8 +1,10 @@
 import Resume from '../models/Resume.js';
-import { parseResume as parseResumeAI } from '../services/aiService.js';
+import { aiClients } from '../services/aiService.js';
 import { transformAiResumeToParsedData } from '../services/aiTransformers.js';
+import { buildResumeTextFromParsed, ensureResumeTextFields } from '../services/resumeTextService.js';
+import { resumeExtraction } from '../services/resumeExtractionService.js';
 import { validateResumeFile } from '../config/multer.js';
-import { scanFileForThreats } from '../utils/avScan.js';
+import { security } from '../utils/avScan.js';
 import {
   buildCorrectionMetadata,
   validateAndNormalizeCorrections
@@ -19,7 +21,7 @@ export const uploadResume = async (req, res, next) => {
       return res.status(400).json({ message: validation.message });
     }
 
-    await scanFileForThreats(req.file.path);
+    await security.scanFileForThreats(req.file.path);
 
     const resume = await Resume.create({
       userId: req.user.id,
@@ -29,13 +31,23 @@ export const uploadResume = async (req, res, next) => {
     });
 
     let parsedData = {};
+    let aiRaw = {};
+    let extractedText = '';
     try {
-      parsedData = await parseResumeAI({
+      aiRaw = await aiClients.parseResume({
         file_path: resume.filePath,
         file_name: resume.originalFileName,
         user_id: req.user.id
       });
-      resume.parsedData = transformAiResumeToParsedData(parsedData);
+      resume.parsedData = transformAiResumeToParsedData(aiRaw);
+      extractedText = await resumeExtraction.extractResumeText({
+        filePath: resume.filePath,
+        mimetype: req.file?.mimetype,
+        userId: req.user.id,
+        fallbackText: aiRaw?.resume_text
+      });
+      const resumeText = extractedText || buildResumeTextFromParsed(resume.parsedData, aiRaw);
+      ensureResumeTextFields(resume, resumeText);
       resume.status = 'parsed';
       resume.parsedAt = new Date();
       resume.parserVersion = 'ai-service/v1';
@@ -52,6 +64,7 @@ export const uploadResume = async (req, res, next) => {
     } catch (error) {
       resume.status = 'failed';
       resume.parsedData = { error: error.message };
+      ensureResumeTextFields(resume, '', { extractionError: true, textStatus: 'failed' });
       console.error('AI parse failed:', error.message);
     }
 

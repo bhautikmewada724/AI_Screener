@@ -47,7 +47,7 @@ test('applyToJob stores and returns stable match score and labels', async (t) =>
     return { ...payload, _id: 'app1', createdAt: new Date(), updatedAt: new Date() };
   });
 
-  t.mock.method(hrWorkflowService, 'ensureMatchResult', async () => ({
+  hrWorkflowService.__setEnsureMatchResultImplForTest(async () => ({
     _id: 'match1',
     matchScore: 0.82,
     matchedSkills: ['a'],
@@ -55,8 +55,8 @@ test('applyToJob stores and returns stable match score and labels', async (t) =>
     scoreBreakdown: { skills_score: 0.82 },
     scoringConfigVersion: 1
   }));
-  t.mock.method(hrWorkflowService, 'recordAuditEvent', async () => {});
-  t.mock.method(matchingService, 'clearMatchResultCache', async () => {});
+  hrWorkflowService.__setRecordAuditEventImplForTest(async () => {});
+  matchingService.__setClearMatchResultCacheImplForTest(async () => {});
 
   let recommendationUpdated = false;
   t.mock.method(Recommendation, 'updateOne', async () => {
@@ -83,6 +83,72 @@ test('applyToJob stores and returns stable match score and labels', async (t) =>
   assert.equal(res.jsonPayload.matchScore, 0.82);
   assert.equal(res.jsonPayload.matchLabel, 'Strong');
   assert.equal(recommendationUpdated, true);
+  assert.equal(res.jsonPayload.audit, undefined);
+
+  hrWorkflowService.__setEnsureMatchResultImplForTest(undefined);
+  hrWorkflowService.__setRecordAuditEventImplForTest(undefined);
+  matchingService.__setClearMatchResultCacheImplForTest(undefined);
+});
+
+test('applyToJob returns audit payload when audit mode enabled', async (t) => {
+  process.env.ENABLE_AUDIT_MODE = 'true';
+  t.mock.method(JobDescription, 'findById', async () => ({
+    _id: 'job1',
+    status: 'open',
+    orgId: 'org1',
+    requiredSkills: ['node', 'mongo'],
+    scoringConfig: { weights: { skills: 40, experience: 60 } }
+  }));
+  t.mock.method(Resume, 'findOne', async () => ({
+    _id: 'resume1',
+    userId: 'user1',
+    status: 'parsed',
+    parsedData: { skills: ['a', 'b', 'c', 'd', 'e'] },
+    filePath: '/tmp/resume.pdf',
+    originalFileName: 'resume.pdf'
+  }));
+  t.mock.method(Application, 'findOne', async () => null);
+
+  t.mock.method(Application, 'create', async (payload) => {
+    return { ...payload, _id: 'app1', createdAt: new Date(), updatedAt: new Date() };
+  });
+
+  hrWorkflowService.__setEnsureMatchResultImplForTest(async () => ({
+    _id: 'match1',
+    matchScore: 0.64,
+    matchedSkills: ['a'],
+    explanation: 'Good overlap',
+    scoreBreakdown: { requirements: { strong: 2, weak: 1, uncertain: 0, missing: 1, total: 4 } },
+    scoringConfigVersion: 1
+  }));
+  hrWorkflowService.__setRecordAuditEventImplForTest(async () => {});
+  matchingService.__setClearMatchResultCacheImplForTest(async () => {});
+
+  const req = {
+    body: { jobId: 'job1', resumeId: 'resume1' },
+    user: { id: 'user1' },
+    orgId: 'org1'
+  };
+  const res = createMockRes();
+
+  await applyToJob(req, res, (err) => {
+    throw err || new Error('Unexpected next() call');
+  });
+
+  assert.equal(res.statusCode, 201);
+  assert.ok(res.jsonPayload.audit);
+  assert.equal(res.jsonPayload.audit.jobId, 'job1');
+  assert.equal(res.jsonPayload.audit.resumeId, 'resume1');
+  assert.equal(res.jsonPayload.audit.scorePercent, 64);
+  assert.equal(res.jsonPayload.audit.totalWeight, 100);
+  assert.equal(res.jsonPayload.audit.requirementsCount, 4);
+  assert.equal(res.jsonPayload.audit.strongCount, 2);
+  assert.equal(res.jsonPayload.audit.missingCount, 1);
+
+  hrWorkflowService.__setEnsureMatchResultImplForTest(undefined);
+  hrWorkflowService.__setRecordAuditEventImplForTest(undefined);
+  matchingService.__setClearMatchResultCacheImplForTest(undefined);
+  delete process.env.ENABLE_AUDIT_MODE;
 });
 
 

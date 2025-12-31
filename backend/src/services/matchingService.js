@@ -88,7 +88,7 @@ export const computeTagScore = (job, resume) => {
   return { score: clamp01(score), matchedTags: matched };
 };
 
-export const clearMatchResultCache = async ({ jobId, resumeId, requestId }) => {
+const clearMatchResultCacheBaseImpl = async ({ jobId, resumeId, requestId }) => {
   const traceEnabled = String(process.env.TRACE_MATCHING || '').toLowerCase() === 'true';
   try {
     const result = await MatchResult.deleteOne({ jobId, resumeId });
@@ -112,6 +112,13 @@ export const clearMatchResultCache = async ({ jobId, resumeId, requestId }) => {
     }
     return { acknowledged: false, deletedCount: 0 };
   }
+};
+
+let clearMatchResultCacheImpl = clearMatchResultCacheBaseImpl;
+
+export const clearMatchResultCache = (...args) => clearMatchResultCacheImpl(...args);
+export const __setClearMatchResultCacheImplForTest = (fn) => {
+  clearMatchResultCacheImpl = fn || clearMatchResultCacheBaseImpl;
 };
 
 const combineScores = (scores) => {

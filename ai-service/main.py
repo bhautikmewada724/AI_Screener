@@ -5,6 +5,7 @@ from routes.resume_routes import router as resume_router
 from routes.jd_routes import router as job_router
 from routes.match_routes import router as match_router
 from routes.recommendation_routes import router as recommendation_router
+from routes.ats_routes import router as ats_router
 from utils.settings import get_settings
 
 settings = get_settings()
@@ -33,4 +34,5 @@ app.include_router(resume_router)
 app.include_router(job_router)
 app.include_router(match_router)
 app.include_router(recommendation_router)
+app.include_router(ats_router)
 
