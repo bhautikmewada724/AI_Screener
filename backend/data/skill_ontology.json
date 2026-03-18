@@ -1,0 +1,13 @@
+[
+  { "canonicalId": "nodejs", "displayName": "Node.js", "aliases": ["nodejs", "node js", "node.js"], "category": "runtime" },
+  { "canonicalId": "express", "displayName": "Express", "aliases": ["express", "expressjs", "express.js", "express js"], "category": "framework" },
+  { "canonicalId": "mongodb", "displayName": "MongoDB", "aliases": ["mongodb"], "category": "database" },
+  { "canonicalId": "react", "displayName": "React", "aliases": ["react"], "category": "frontend" },
+  { "canonicalId": "docker", "displayName": "Docker", "aliases": ["docker"], "category": "devops" },
+  { "canonicalId": "postgresql", "displayName": "PostgreSQL", "aliases": ["postgres", "postgresql"], "category": "database" },
+  { "canonicalId": "jwt", "displayName": "JWT", "aliases": ["jwt", "json web token", "json web tokens"], "category": "security" },
+  { "canonicalId": "rbac", "displayName": "RBAC", "aliases": ["rbac", "role based access control", "role-based access control"], "category": "security" },
+  { "canonicalId": "validation", "displayName": "Validation", "aliases": ["validation", "input validation"], "category": "backend" },
+  { "canonicalId": "rest", "displayName": "REST", "aliases": ["rest", "rest api", "rest apis", "restful"], "category": "api" }
+]
+

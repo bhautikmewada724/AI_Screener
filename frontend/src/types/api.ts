@@ -1,0 +1,363 @@
+export type UserRole = 'admin' | 'hr' | 'candidate';
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  status?: 'active' | 'inactive' | 'banned';
+  createdAt?: string;
+  updatedAt?: string;
+  lastLoginAt?: string;
+}
+
+export interface SalaryRange {
+  min?: number;
+  max?: number;
+  currency?: string;
+}
+
+export interface JobSummary {
+  _id: string;
+  title: string;
+  location?: string;
+  requiredSkills?: string[];
+  niceToHaveSkills?: string[];
+  status?: 'draft' | 'open' | 'on_hold' | 'closed' | 'archived';
+  tags?: string[];
+  metadata?: JobMetadata;
+}
+
+export interface JobDescription extends JobSummary {
+  description: string;
+  employmentType?: string;
+  salaryRange?: SalaryRange;
+  openings?: number;
+  reviewStages?: string[];
+  hrId?: string;
+  createdAt: string;
+}
+
+export interface JobMetadata {
+  [key: string]: string | undefined;
+  seniorityLevel?: string;
+  jobCategory?: string;
+  aiSummary?: string;
+}
+
+export interface ResumeExperience {
+  company?: string;
+  role?: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface ParsedResumeData {
+  summary?: string;
+  skills?: string[];
+  experience?: ResumeExperience[];
+  education?: Array<{ institution?: string; degree?: string; year?: number }>;
+  location?: string;
+  warnings?: string[];
+  embeddings?: number[];
+  error?: string;
+  totalYearsExperience?: number;
+}
+
+export interface ResumePayload {
+  _id: string;
+  status: string;
+  originalFileName?: string;
+  createdAt?: string;
+  parsedData?: ParsedResumeData;
+  parsedDataCorrected?: ParsedResumeData;
+  isCorrected?: boolean;
+  correctedAt?: string;
+}
+
+export interface CandidateProfile {
+  _id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+}
+
+export type ApplicationSource = 'candidate_applied' | 'hr_sourced';
+
+export interface ApplicationRecord {
+  _id: string;
+  jobId: string | JobDescription;
+  candidateId: CandidateProfile;
+  resumeId: ResumePayload;
+  status: 'applied' | 'in_review' | 'shortlisted' | 'rejected' | 'hired';
+  reviewStage?: string;
+  source?: ApplicationSource;
+  matchScore?: number;
+  matchLabel?: 'Weak' | 'Medium' | 'Strong';
+  matchComputedAt?: string;
+  matchedSkills: string[];
+  matchExplanation?: MatchExplanation | ExplainabilityPayload | string | null;
+  missingSkills?: string[];
+  embeddingSimilarity?: number;
+  scoringConfigVersion?: number;
+  scoreBreakdown?: ScoreBreakdown | null;
+  decisionReason?: string;
+  notesCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MatchExplanation {
+  notes?: string;
+  missingSkills?: string[];
+  embeddingSimilarity?: number;
+  source?: string;
+  [key: string]: unknown;
+}
+
+export interface ScoringWeights {
+  skills: number;
+  experience: number;
+  education: number;
+  keywords: number;
+}
+
+export interface ScoringConstraints {
+  mustHaveSkills: string[];
+  niceToHaveSkills: string[];
+  minYearsExperience: number | null;
+}
+
+export interface ScoringConfig {
+  weights: ScoringWeights;
+  constraints: ScoringConstraints;
+  version?: number;
+}
+
+export interface ComponentScoreDetail {
+  score: number;
+  weight: number;
+  weighted_contribution: number;
+  details?: string;
+}
+
+export interface ScoreBreakdown {
+  overall_score?: number;
+  skill_match_score?: number;
+  experience_match_score?: number;
+  semantic_similarity_score?: number;
+  education_score?: number;
+  project_score?: number;
+  jdFitScore?: number;
+  requiredScore?: number;
+  preferredScore?: number;
+  evidenceStrengthScore?: number;
+  totalWeight?: number;
+  // Legacy fields for backward compatibility
+  skills_score?: number;
+  keywords_score?: number;
+  embeddings_score?: number;
+  location_score?: number;
+  final_score?: number;
+  weights?: Record<string, number>;
+}
+
+export interface EvidenceSnippet {
+  type: 'resume' | 'jd';
+  label: string;
+  snippet: string;
+  confidence?: number;
+}
+
+export interface ExplainabilityPayload {
+  overall_score?: number;
+  matched_skills?: string[];
+  missing_skills?: string[];
+  missing_must_have_skills?: string[];
+  missing_nice_to_have_skills?: string[];
+  missing_nice_to_have?: string[];
+  component_scores?: Record<string, ComponentScoreDetail>;
+  strengths?: string[];
+  improvements?: string[];
+  evidence?: EvidenceSnippet[];
+  score_breakdown?: ScoreBreakdown;
+  model_metadata?: Record<string, string>;
+  jdFitScore?: number;
+  rse_breakdown?: {
+    requiredScore?: number;
+    preferredScore?: number;
+    evidenceStrengthScore?: number;
+    counts?: Record<string, number>;
+  };
+}
+
+export interface ReviewNote {
+  _id: string;
+  applicationId: string;
+  authorId: CandidateProfile;
+  body: string;
+  visibility: 'shared' | 'private';
+  createdAt: string;
+}
+
+export interface AuditEventRecord {
+  _id: string;
+  applicationId: string;
+  actorId: CandidateProfile;
+  action: string;
+  context?: Record<string, unknown>;
+  createdAt: string;
+}
+
+// ATS Scan types
+export type ATSeverity = 'critical' | 'warning' | 'info';
+
+export interface ATFinding {
+  severity: ATSeverity;
+  code: string;
+  message: string;
+  whyItMatters: string;
+  fix: string;
+}
+
+export interface ATMissingKeyword {
+  keyword: string;
+  importance: number;
+  jdEvidence: string[];
+  suggestedPlacement: 'Skills' | 'Experience' | 'Projects' | 'Summary';
+}
+
+export interface ATKeywordBucket {
+  matched: string[];
+  missing: ATMissingKeyword[];
+}
+
+export interface ATKeywordAnalysis {
+  required: ATKeywordBucket;
+  preferred: ATKeywordBucket;
+}
+
+export interface ATSynonymNote {
+  resumeTerm: string;
+  jdTerm: string;
+  treatedAsMatch: boolean;
+}
+
+export interface ATSkillsAnalysis {
+  matched: string[];
+  missingRequired: string[];
+  missingPreferred: string[];
+  synonymNotes: ATSynonymNote[];
+}
+
+export interface ATEvidenceGap {
+  requirement: string;
+  status: 'missing' | 'weak' | 'ok';
+  exampleFix: string;
+  whereToAdd: 'Experience' | 'Projects' | 'Summary';
+}
+
+export interface ATSectionFeedback {
+  section: 'Summary' | 'Skills' | 'Experience' | 'Projects' | 'Education' | 'Other';
+  severity: 'warning' | 'info';
+  message: string;
+  fix: string;
+}
+
+export interface ATRewriteStep {
+  priority: 'P0' | 'P1' | 'P2';
+  title: string;
+  action: string;
+  details: string;
+}
+
+export interface ATScoreBlock {
+  atsReadabilityScore: number;
+  keywordMatchScore: number;
+  evidenceScore: number;
+}
+
+export interface ATSScanResponse {
+  schemaVersion: string;
+  jobId?: string;
+  resumeId?: string;
+  overall: ATScoreBlock;
+  formatFindings: ATFinding[];
+  keywordAnalysis: ATKeywordAnalysis;
+  skills: ATSkillsAnalysis;
+  evidenceGaps: ATEvidenceGap[];
+  sectionFeedback: ATSectionFeedback[];
+  rewritePlan: ATRewriteStep[];
+}
+
+export interface UserAuditEvent {
+  id: string;
+  actorId?: string;
+  targetUserId?: string;
+  action: string;
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  context?: Record<string, unknown>;
+  createdAt?: string;
+}
+
+export interface RecommendedJob {
+  jobId: string;
+  reason?: string;
+  status: 'shown' | 'saved' | 'dismissed' | 'applied';
+  feedbackReason?: string;
+  job?: JobSummary;
+  jobSnapshot?: {
+    title?: string;
+    location?: string;
+    requiredSkills?: string[];
+    niceToHaveSkills?: string[];
+  };
+  lastRecommendedAt?: string;
+}
+
+export interface Recommendation {
+  id?: string;
+  candidateId?: string;
+  generatedAt?: string;
+  recommendedJobs: RecommendedJob[];
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+}
+
+export interface SuggestedCandidate {
+  matchId: string;
+  resumeId: string;
+  candidateId: string;
+  matchScore: number;
+  matchedSkills: string[];
+  explanation?: MatchExplanation | Record<string, unknown> | string;
+  missingSkills?: string[];
+  embeddingSimilarity?: number;
+  scoreBreakdown?: ScoreBreakdown | null;
+  scoringConfigVersion?: number;
+  resumeSummary?: string;
+  resumeSkills?: string[];
+  applied?: boolean;
+}
+
+export interface JobCandidatesResponse {
+  jobId: string;
+  config: {
+    version: number;
+    source?: string;
+  };
+  applied: ApplicationRecord[];
+  suggested: SuggestedCandidate[];
+}
+
+

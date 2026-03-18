@@ -1,0 +1,891 @@
+[
+  {
+    "canonicalId": "python",
+    "displayName": "Python",
+    "aliases": ["python", "python3", "py"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "javascript",
+    "displayName": "JavaScript",
+    "aliases": ["javascript", "js", "ecmascript", "es6", "es2015"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "typescript",
+    "displayName": "TypeScript",
+    "aliases": ["typescript", "ts"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "java",
+    "displayName": "Java",
+    "aliases": ["java", "j2ee", "java ee", "jdk"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "csharp",
+    "displayName": "C#",
+    "aliases": ["c#", "csharp", "c sharp", "dotnet c#"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "cplusplus",
+    "displayName": "C++",
+    "aliases": ["c++", "cpp", "c plus plus"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "c",
+    "displayName": "C",
+    "aliases": ["c language", "ansi c"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "go",
+    "displayName": "Go",
+    "aliases": ["go", "golang"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "rust",
+    "displayName": "Rust",
+    "aliases": ["rust", "rustlang"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "ruby",
+    "displayName": "Ruby",
+    "aliases": ["ruby"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "php",
+    "displayName": "PHP",
+    "aliases": ["php"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "swift",
+    "displayName": "Swift",
+    "aliases": ["swift"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "kotlin",
+    "displayName": "Kotlin",
+    "aliases": ["kotlin"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "scala",
+    "displayName": "Scala",
+    "aliases": ["scala"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "r",
+    "displayName": "R",
+    "aliases": ["r language", "r programming", "rstats"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "sql",
+    "displayName": "SQL",
+    "aliases": ["sql", "structured query language"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "html",
+    "displayName": "HTML",
+    "aliases": ["html", "html5"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "css",
+    "displayName": "CSS",
+    "aliases": ["css", "css3", "cascading style sheets"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "dart",
+    "displayName": "Dart",
+    "aliases": ["dart"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "matlab",
+    "displayName": "MATLAB",
+    "aliases": ["matlab"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "react",
+    "displayName": "React",
+    "aliases": ["react", "reactjs", "react.js", "react js"],
+    "category": "framework",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "angular",
+    "displayName": "Angular",
+    "aliases": ["angular", "angularjs", "angular.js", "angular js"],
+    "category": "framework",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "vue",
+    "displayName": "Vue.js",
+    "aliases": ["vue", "vuejs", "vue.js", "vue js"],
+    "category": "framework",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "nextjs",
+    "displayName": "Next.js",
+    "aliases": ["next", "nextjs", "next.js", "next js"],
+    "category": "framework",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "nodejs",
+    "displayName": "Node.js",
+    "aliases": ["nodejs", "node js", "node.js", "node"],
+    "category": "runtime",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "express",
+    "displayName": "Express.js",
+    "aliases": ["express", "expressjs", "express.js", "express js"],
+    "category": "framework",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "django",
+    "displayName": "Django",
+    "aliases": ["django"],
+    "category": "framework",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "flask",
+    "displayName": "Flask",
+    "aliases": ["flask"],
+    "category": "framework",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "fastapi",
+    "displayName": "FastAPI",
+    "aliases": ["fastapi", "fast api"],
+    "category": "framework",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "spring",
+    "displayName": "Spring",
+    "aliases": ["spring", "spring boot", "spring framework", "springboot"],
+    "category": "framework",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "dotnet",
+    "displayName": ".NET",
+    "aliases": [".net", "dotnet", "dot net", "asp.net", "aspnet"],
+    "category": "framework",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "rails",
+    "displayName": "Ruby on Rails",
+    "aliases": ["rails", "ruby on rails", "ror"],
+    "category": "framework",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "laravel",
+    "displayName": "Laravel",
+    "aliases": ["laravel"],
+    "category": "framework",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "flutter",
+    "displayName": "Flutter",
+    "aliases": ["flutter"],
+    "category": "framework",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "react_native",
+    "displayName": "React Native",
+    "aliases": ["react native", "react-native", "reactnative"],
+    "category": "framework",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "svelte",
+    "displayName": "Svelte",
+    "aliases": ["svelte", "sveltekit"],
+    "category": "framework",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "tailwindcss",
+    "displayName": "Tailwind CSS",
+    "aliases": ["tailwind", "tailwindcss", "tailwind css"],
+    "category": "framework",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "bootstrap",
+    "displayName": "Bootstrap",
+    "aliases": ["bootstrap"],
+    "category": "framework",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "jquery",
+    "displayName": "jQuery",
+    "aliases": ["jquery"],
+    "category": "library",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "redux",
+    "displayName": "Redux",
+    "aliases": ["redux", "react-redux"],
+    "category": "library",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "graphql",
+    "displayName": "GraphQL",
+    "aliases": ["graphql", "graph ql"],
+    "category": "api",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "rest",
+    "displayName": "REST API",
+    "aliases": ["rest", "rest api", "rest apis", "restful", "restful api", "restful apis"],
+    "category": "api",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "grpc",
+    "displayName": "gRPC",
+    "aliases": ["grpc"],
+    "category": "api",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "mongodb",
+    "displayName": "MongoDB",
+    "aliases": ["mongodb", "mongo"],
+    "category": "database",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "postgresql",
+    "displayName": "PostgreSQL",
+    "aliases": ["postgresql", "postgres", "psql"],
+    "category": "database",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "mysql",
+    "displayName": "MySQL",
+    "aliases": ["mysql"],
+    "category": "database",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "redis",
+    "displayName": "Redis",
+    "aliases": ["redis"],
+    "category": "database",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "elasticsearch",
+    "displayName": "Elasticsearch",
+    "aliases": ["elasticsearch", "elastic search", "elastic"],
+    "category": "database",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "sqlite",
+    "displayName": "SQLite",
+    "aliases": ["sqlite", "sqlite3"],
+    "category": "database",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "dynamodb",
+    "displayName": "DynamoDB",
+    "aliases": ["dynamodb", "dynamo db", "dynamo"],
+    "category": "database",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "firebase",
+    "displayName": "Firebase",
+    "aliases": ["firebase", "firestore"],
+    "category": "database",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "cassandra",
+    "displayName": "Cassandra",
+    "aliases": ["cassandra", "apache cassandra"],
+    "category": "database",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "oracle_db",
+    "displayName": "Oracle DB",
+    "aliases": ["oracle", "oracle db", "oracle database"],
+    "category": "database",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "docker",
+    "displayName": "Docker",
+    "aliases": ["docker", "docker container", "containerization"],
+    "category": "devops",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "kubernetes",
+    "displayName": "Kubernetes",
+    "aliases": ["kubernetes", "k8s"],
+    "category": "devops",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "terraform",
+    "displayName": "Terraform",
+    "aliases": ["terraform", "tf"],
+    "category": "devops",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "ansible",
+    "displayName": "Ansible",
+    "aliases": ["ansible"],
+    "category": "devops",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "jenkins",
+    "displayName": "Jenkins",
+    "aliases": ["jenkins"],
+    "category": "devops",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "cicd",
+    "displayName": "CI/CD",
+    "aliases": ["ci/cd", "cicd", "ci cd", "continuous integration", "continuous deployment", "continuous delivery"],
+    "category": "devops",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "github_actions",
+    "displayName": "GitHub Actions",
+    "aliases": ["github actions", "gh actions"],
+    "category": "devops",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "gitlab_ci",
+    "displayName": "GitLab CI",
+    "aliases": ["gitlab ci", "gitlab-ci", "gitlab ci/cd"],
+    "category": "devops",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "aws",
+    "displayName": "AWS",
+    "aliases": ["aws", "amazon web services"],
+    "category": "cloud",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "azure",
+    "displayName": "Azure",
+    "aliases": ["azure", "microsoft azure"],
+    "category": "cloud",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "gcp",
+    "displayName": "GCP",
+    "aliases": ["gcp", "google cloud", "google cloud platform"],
+    "category": "cloud",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "heroku",
+    "displayName": "Heroku",
+    "aliases": ["heroku"],
+    "category": "cloud",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "vercel",
+    "displayName": "Vercel",
+    "aliases": ["vercel"],
+    "category": "cloud",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "netlify",
+    "displayName": "Netlify",
+    "aliases": ["netlify"],
+    "category": "cloud",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "git",
+    "displayName": "Git",
+    "aliases": ["git", "git version control"],
+    "category": "tool",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "github",
+    "displayName": "GitHub",
+    "aliases": ["github"],
+    "category": "tool",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "jira",
+    "displayName": "Jira",
+    "aliases": ["jira"],
+    "category": "tool",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "figma",
+    "displayName": "Figma",
+    "aliases": ["figma"],
+    "category": "tool",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "postman",
+    "displayName": "Postman",
+    "aliases": ["postman"],
+    "category": "tool",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "webpack",
+    "displayName": "Webpack",
+    "aliases": ["webpack"],
+    "category": "tool",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "vite",
+    "displayName": "Vite",
+    "aliases": ["vite", "vitejs"],
+    "category": "tool",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "nginx",
+    "displayName": "Nginx",
+    "aliases": ["nginx"],
+    "category": "tool",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "linux",
+    "displayName": "Linux",
+    "aliases": ["linux", "ubuntu", "centos", "debian"],
+    "category": "tool",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "machine_learning",
+    "displayName": "Machine Learning",
+    "aliases": ["machine learning", "ml", "machine-learning"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "deep_learning",
+    "displayName": "Deep Learning",
+    "aliases": ["deep learning", "dl", "deep-learning"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "natural_language_processing",
+    "displayName": "NLP",
+    "aliases": ["nlp", "natural language processing", "text mining", "text analytics"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "computer_vision",
+    "displayName": "Computer Vision",
+    "aliases": ["computer vision", "cv", "image recognition", "object detection"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "tensorflow",
+    "displayName": "TensorFlow",
+    "aliases": ["tensorflow", "tf", "tensor flow"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "pytorch",
+    "displayName": "PyTorch",
+    "aliases": ["pytorch", "torch"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "scikit_learn",
+    "displayName": "Scikit-learn",
+    "aliases": ["scikit-learn", "sklearn", "scikit learn"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "pandas",
+    "displayName": "Pandas",
+    "aliases": ["pandas"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "numpy",
+    "displayName": "NumPy",
+    "aliases": ["numpy"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "keras",
+    "displayName": "Keras",
+    "aliases": ["keras"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "opencv",
+    "displayName": "OpenCV",
+    "aliases": ["opencv", "open cv"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "data_analysis",
+    "displayName": "Data Analysis",
+    "aliases": ["data analysis", "data analytics", "data-analysis"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "data_visualization",
+    "displayName": "Data Visualization",
+    "aliases": ["data visualization", "data viz"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "data_engineering",
+    "displayName": "Data Engineering",
+    "aliases": ["data engineering", "data pipelines"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "data_science",
+    "displayName": "Data Science",
+    "aliases": ["data science", "data scientist"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "apache_spark",
+    "displayName": "Apache Spark",
+    "aliases": ["spark", "apache spark", "pyspark"],
+    "category": "big_data",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "hadoop",
+    "displayName": "Hadoop",
+    "aliases": ["hadoop", "apache hadoop", "hdfs", "mapreduce"],
+    "category": "big_data",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "kafka",
+    "displayName": "Kafka",
+    "aliases": ["kafka", "apache kafka"],
+    "category": "big_data",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "airflow",
+    "displayName": "Apache Airflow",
+    "aliases": ["airflow", "apache airflow"],
+    "category": "big_data",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "etl",
+    "displayName": "ETL",
+    "aliases": ["etl", "extract transform load"],
+    "category": "big_data",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "tableau",
+    "displayName": "Tableau",
+    "aliases": ["tableau"],
+    "category": "tool",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "power_bi",
+    "displayName": "Power BI",
+    "aliases": ["power bi", "powerbi"],
+    "category": "tool",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "jwt",
+    "displayName": "JWT",
+    "aliases": ["jwt", "json web token", "json web tokens"],
+    "category": "security",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "oauth",
+    "displayName": "OAuth",
+    "aliases": ["oauth", "oauth2", "oauth 2.0"],
+    "category": "security",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "microservices",
+    "displayName": "Microservices",
+    "aliases": ["microservices", "micro services", "microservice architecture"],
+    "category": "architecture",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "system_design",
+    "displayName": "System Design",
+    "aliases": ["system design", "systems design", "software architecture"],
+    "category": "architecture",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "agile",
+    "displayName": "Agile",
+    "aliases": ["agile", "agile methodology", "scrum", "kanban"],
+    "category": "methodology",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "tdd",
+    "displayName": "TDD",
+    "aliases": ["tdd", "test driven development", "test-driven development"],
+    "category": "methodology",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "unit_testing",
+    "displayName": "Unit Testing",
+    "aliases": ["unit testing", "unit tests", "jest", "pytest", "mocha", "junit"],
+    "category": "testing",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "selenium",
+    "displayName": "Selenium",
+    "aliases": ["selenium", "selenium webdriver"],
+    "category": "testing",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "cypress",
+    "displayName": "Cypress",
+    "aliases": ["cypress"],
+    "category": "testing",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "rabbitmq",
+    "displayName": "RabbitMQ",
+    "aliases": ["rabbitmq", "rabbit mq"],
+    "category": "messaging",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "celery",
+    "displayName": "Celery",
+    "aliases": ["celery"],
+    "category": "tool",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "s3",
+    "displayName": "AWS S3",
+    "aliases": ["s3", "aws s3", "amazon s3"],
+    "category": "cloud",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "ec2",
+    "displayName": "AWS EC2",
+    "aliases": ["ec2", "aws ec2"],
+    "category": "cloud",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "lambda",
+    "displayName": "AWS Lambda",
+    "aliases": ["lambda", "aws lambda", "serverless"],
+    "category": "cloud",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "llm",
+    "displayName": "LLM",
+    "aliases": ["llm", "large language model", "large language models"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "generative_ai",
+    "displayName": "Generative AI",
+    "aliases": ["generative ai", "gen ai", "genai"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "langchain",
+    "displayName": "LangChain",
+    "aliases": ["langchain", "lang chain"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "huggingface",
+    "displayName": "Hugging Face",
+    "aliases": ["hugging face", "huggingface", "hf transformers"],
+    "category": "ai_ml",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "mongoose",
+    "displayName": "Mongoose",
+    "aliases": ["mongoose"],
+    "category": "library",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "sqlalchemy",
+    "displayName": "SQLAlchemy",
+    "aliases": ["sqlalchemy", "sql alchemy"],
+    "category": "library",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "prisma",
+    "displayName": "Prisma",
+    "aliases": ["prisma"],
+    "category": "library",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "prometheus",
+    "displayName": "Prometheus",
+    "aliases": ["prometheus"],
+    "category": "devops",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "grafana",
+    "displayName": "Grafana",
+    "aliases": ["grafana"],
+    "category": "devops",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "socketio",
+    "displayName": "Socket.IO",
+    "aliases": ["socket.io", "socketio", "websocket", "websockets"],
+    "category": "library",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "sass",
+    "displayName": "SASS",
+    "aliases": ["sass", "scss"],
+    "category": "language",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "material_ui",
+    "displayName": "Material UI",
+    "aliases": ["material ui", "mui", "material design"],
+    "category": "library",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "storybook",
+    "displayName": "Storybook",
+    "aliases": ["storybook"],
+    "category": "tool",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "three_js",
+    "displayName": "Three.js",
+    "aliases": ["three.js", "threejs"],
+    "category": "library",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  },
+  {
+    "canonicalId": "d3",
+    "displayName": "D3.js",
+    "aliases": ["d3", "d3.js", "d3js"],
+    "category": "library",
+    "updatedAt": "2026-03-14T00:00:00Z"
+  }
+]
